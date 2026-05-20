@@ -1,120 +1,8 @@
 "use client";
 import Head from "next/head";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
-
-// ── DATA ────────────────────────────────────────────────────────────────────
-const ALL_PROPERTIES = [
-  {
-    id: 1,
-    name: "The Nexus Sanctuary",
-    location: "4th Block, Koramangala",
-    distance: "0.5km from University",
-    rating: 4.9,
-    isNew: false,
-    price: 14500,
-    badge: "VERIFIED",
-    badgeStyle: "bg-green-500 text-white",
-    tag: "Only 2 Beds Left",
-    tagStyle: "bg-amber-400 text-white",
-    amenities: ["Gigabit", "3 Meals", "Central AC"],
-    amenityIcons: ["wifi", "meals", "ac"],
-    roomType: "Double",
-    gender: "Co-ed",
-    wishlist: false,
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=700&q=80",
-  },
-  {
-    id: 2,
-    name: "Azure Residences",
-    location: "7th Block, Koramangala",
-    distance: "1.2km from University",
-    rating: 4.7,
-    isNew: false,
-    price: 12000,
-    badge: null,
-    tag: null,
-    amenities: ["24/7 Gym", "Laundry"],
-    amenityIcons: ["gym", "laundry"],
-    roomType: "Single",
-    gender: "Girls",
-    wishlist: true,
-    image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=700&q=80",
-  },
-  {
-    id: 3,
-    name: "Scholar's Gate",
-    location: "5th Block, Koramangala",
-    distance: "0.8km from University",
-    rating: null,
-    isNew: true,
-    price: 16000,
-    badge: "NEW LISTING",
-    badgeStyle: "bg-blue-500 text-white",
-    tag: null,
-    amenities: ["WiFi", "Biometric"],
-    amenityIcons: ["wifi", "security"],
-    roomType: "Triple",
-    gender: "Boys",
-    wishlist: false,
-    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=700&q=80",
-  },
-  {
-    id: 4,
-    name: "The Heritage Loft",
-    location: "1st Block, Koramangala",
-    distance: "2.1km from University",
-    rating: 4.5,
-    isNew: false,
-    price: 10500,
-    badge: null,
-    tag: null,
-    amenities: ["Pure Veg"],
-    amenityIcons: ["meals"],
-    roomType: "Single",
-    gender: "Girls",
-    wishlist: false,
-    image: "https://images.unsplash.com/photo-1600210492493-0946911123ea?w=700&q=80",
-  },
-  {
-    id: 5,
-    name: "The Nordic House",
-    location: "3rd Block, Koramangala",
-    distance: "0.3km from University",
-    rating: 4.9,
-    isNew: false,
-    price: 18500,
-    badge: "VERIFIED",
-    badgeStyle: "bg-green-500 text-white",
-    tag: "4 Beds Left",
-    tagStyle: "bg-green-500 text-white",
-    amenities: ["WiFi", "Meals", "AC"],
-    amenityIcons: ["wifi", "meals", "ac"],
-    roomType: "Double",
-    gender: "Co-ed",
-    wishlist: false,
-    image: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=700&q=80",
-  },
-  {
-    id: 6,
-    name: "Skyloft Co-Living",
-    location: "6th Block, Koramangala",
-    distance: "1.5km from University",
-    rating: 4.8,
-    isNew: false,
-    price: 15000,
-    badge: "VERIFIED",
-    badgeStyle: "bg-green-500 text-white",
-    tag: "2 Beds Left",
-    tagStyle: "bg-amber-400 text-white",
-    amenities: ["Gym", "Laundry", "Security"],
-    amenityIcons: ["gym", "laundry", "security"],
-    roomType: "Triple",
-    gender: "Boys",
-    wishlist: false,
-    image: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=700&q=80",
-  },
-];
+import { getAllProperties } from "../api";
 
 const AMENITY_ICONS = {
   wifi: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>,
@@ -127,8 +15,63 @@ const AMENITY_ICONS = {
 
 const SORT_OPTIONS = ["Price: Low to High", "Price: High to Low", "Rating", "Distance", "Newest"];
 
+const AMENITY_ICON_MAP = {
+  wifi: "wifi",
+  internet: "wifi",
+  ac: "ac",
+  airconditioning: "ac",
+  airconditioner: "ac",
+  gym: "gym",
+  laundry: "laundry",
+  security: "security",
+  meals: "meals",
+  food: "meals",
+};
+
+const formatCurrency = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
+
+const getAmenityIconKey = (amenity) => {
+  const normalized = String(amenity || "").toLowerCase().replace(/[^a-z]/g, "");
+  if (AMENITY_ICON_MAP[normalized]) return AMENITY_ICON_MAP[normalized];
+  if (normalized.includes("wifi") || normalized.includes("internet")) return "wifi";
+  if (normalized.includes("ac") || normalized.includes("aircondition")) return "ac";
+  if (normalized.includes("gym")) return "gym";
+  if (normalized.includes("laundry")) return "laundry";
+  if (normalized.includes("security")) return "security";
+  if (normalized.includes("meal") || normalized.includes("food")) return "meals";
+  return null;
+};
+
+const mapProperty = (property) => {
+  const room = property?.rooms?.[0] || {};
+  const availableBeds = Number(property?.availableBeds ?? room?.availableBeds ?? 0);
+
+  return {
+    id: property?._id,
+    name: property?.name || "Untitled Property",
+    location: property?.location?.address || property?.location?.mapLabel || property?.location?.city || "Unknown location",
+    distance: property?.location?.city && property?.location?.landmark
+      ? `${property.location.city} • ${property.location.landmark}`
+      : property?.location?.city || property?.location?.landmark || "",
+    rating: property?.rating ?? null,
+    isNew: false,
+    price: Number(property?.startingPrice ?? room?.price ?? 0),
+    badge: property?.isVerified || property?.status === "verified" ? "VERIFIED" : null,
+    badgeStyle: "bg-green-500 text-white",
+    tag: availableBeds > 0 ? `${availableBeds} Beds Left` : "Full",
+    tagStyle: availableBeds > 0 ? "bg-amber-400 text-white" : "bg-slate-500 text-white",
+    amenities: Array.isArray(property?.amenities) ? property.amenities : [],
+    amenityIcons: Array.isArray(property?.amenities) ? property.amenities.map(getAmenityIconKey) : [],
+    roomType: room?.type || (Array.isArray(property?.rooms) && property.rooms.length > 1 ? "Multiple" : "Single"),
+    gender: property?.gender || "Any",
+    wishlist: false,
+    image: property?.images?.[0] || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=700&q=80",
+  };
+};
+
 // ── COMPONENT ────────────────────────────────────────────────────────────────
 export default function SearchResults() {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   // URL query params
@@ -149,6 +92,9 @@ export default function SearchResults() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const AMENITY_CHIPS = ["WiFi", "AC", "Gym", "Meals", "Laundry", "Security"];
   const ROOM_TYPES = ["Single", "Double", "Triple"];
@@ -157,13 +103,48 @@ export default function SearchResults() {
   const toggleAmenity = (a) => setAmenities((p) => p.includes(a) ? p.filter((x) => x !== a) : [...p, a]);
   const toggleWishlist = (e, id) => { e.stopPropagation(); setWishlist((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]); };
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProperties = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const response = await getAllProperties();
+        console.log(response);
+        
+        const list = Array.isArray(response?.properties) ? response.properties.map(mapProperty) : [];
+
+        if (isMounted) {
+          setProperties(list);
+        }
+      } catch (fetchError) {
+        if (isMounted) {
+          setError("Unable to load properties right now.");
+          setProperties([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProperties();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Apply filters
-  const filtered = ALL_PROPERTIES
+  const filtered = properties
     .filter((p) => {
       if (p.price < budgetMin || p.price > budgetMax) return false;
       if (roomTypes.length > 0 && !roomTypes.includes(p.roomType)) return false;
       if (gender !== "Any" && p.gender !== "Co-ed" && p.gender !== gender) return false;
-      if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.location.toLowerCase().includes(search.toLowerCase())) return false;
+      const searchValue = search.toLowerCase();
+      if (searchValue && !p.name.toLowerCase().includes(searchValue) && !p.location.toLowerCase().includes(searchValue)) return false;
       return true;
     })
     .sort((a, b) => {
@@ -419,7 +400,7 @@ export default function SearchResults() {
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                  Found {filtered.length * 7} PGs in {qLocation || "Koramangala"}
+                  Found {filtered.length} PGs in {qLocation || "Koramangala"}
                 </h1>
                 <p className="text-sm text-slate-500 mt-1">Curated living spaces for the modern student.</p>
               </div>
@@ -439,7 +420,22 @@ export default function SearchResults() {
             </div>
 
             {/* ── PROPERTY GRID ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+            {loading && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                {[1, 2].map((item) => (
+                  <div key={item} className="h-[430px] rounded-2xl border border-slate-200 bg-slate-50 animate-pulse" />
+                ))}
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            {!loading && !error && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
               {filtered.map((p) => (
                 <div key={p.id} className="pg-card bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                   onClick={() => router.push(`/property/${p.id}`)}>
@@ -505,14 +501,14 @@ export default function SearchResults() {
                       <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                       </svg>
-                      {p.location} • {p.distance}
+                      {p.location}{p.distance ? ` • ${p.distance}` : ""}
                     </p>
 
                     {/* Amenity pills */}
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {p.amenities.map((a, i) => (
                         <span key={a} className="flex items-center gap-1 text-[11px] text-slate-600 bg-slate-100 px-2 py-1 rounded-full">
-                          {AMENITY_ICONS[p.amenityIcons[i]]}
+                          {p.amenityIcons[i] && AMENITY_ICONS[p.amenityIcons[i]]}
                           {a}
                         </span>
                       ))}
@@ -521,7 +517,7 @@ export default function SearchResults() {
                     {/* Price + CTA */}
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <span className="text-xl font-bold text-slate-900">₹{p.price.toLocaleString("en-IN")}</span>
+                        <span className="text-xl font-bold text-slate-900">{formatCurrency(p.price)}</span>
                         <span className="text-xs text-slate-400 font-normal"> /month</span>
                       </div>
                       <button
@@ -534,9 +530,10 @@ export default function SearchResults() {
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
 
-            {filtered.length === 0 && (
+            {!loading && !error && filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <svg className="w-12 h-12 text-slate-300 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -551,7 +548,7 @@ export default function SearchResults() {
             )}
 
             {/* ── LOAD MORE ── */}
-            {filtered.length > 0 && (
+            {!loading && !error && filtered.length > 0 && (
               <div className="flex flex-col items-center mt-10 gap-6">
                 <button className="flex items-center gap-2 border border-slate-200 bg-white hover:border-blue-300 hover:text-blue-600 text-slate-700 text-sm font-semibold px-8 py-3 rounded-full transition-all cursor-pointer shadow-sm hover:shadow">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

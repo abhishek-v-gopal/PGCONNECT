@@ -2,6 +2,7 @@
 import Head from "next/head";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { userLogin } from "../api";
 
 export default function SignIn() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError("Please fill in all fields.");
@@ -19,25 +20,48 @@ export default function SignIn() {
     }
     setError("");
     setLoading(true);
+    try {
+      const data = {
+        email,
+        password,
+      };
 
-    // Simulate auth — check localStorage for submitted listing
-    setTimeout(() => {
+      console.log('[DEBUG] Attempting login with:', { email: data.email, passwordLength: data.password.length });
+      await userLogin(data);
+
+      // Simulate auth — check localStorage for submitted listing
+      setTimeout(() => {
+        setLoading(false);
+        const listing = typeof window !== "undefined"
+          ? JSON.parse(localStorage.getItem("pg_listing") || "null")
+          : null;
+
+        if (!listing) {
+          // No listing submitted → go to listing page
+          router.push("/listProperty");
+        } else if (listing && !listing.verified) {
+          // Listing submitted but not verified → go to pending page
+          router.push("/listingPending");
+        } else {
+          // Verified → go home
+          router.push("/ownersDashboard");
+        }
+      }, 1000);
+    } catch (error) {
       setLoading(false);
-      const listing = typeof window !== "undefined"
-        ? JSON.parse(localStorage.getItem("pg_listing") || "null")
-        : null;
-
-      if (!listing) {
-        // No listing submitted → go to listing page
-        router.push("/listProperty");
-      } else if (listing && !listing.verified) {
-        // Listing submitted but not verified → go to pending page
-        router.push("/listingPending");
-      } else {
-        // Verified → go home
-        router.push("/ownersDashboard");
+      console.error('[DEBUG] Login error caught:', {
+        status: error?.response?.status,
+        errorData: error?.response?.data,
+        message: error?.message
+      });
+      
+      if (error?.response?.status === 401) {
+        setError("Invalid email or password. Check console for more details.");
+        return;
       }
-    }, 1000);
+
+      setError(`Login failed: ${error?.response?.data?.message || error?.message || 'Please try again.'}`);
+    }
   };
 
   const handleGoogle = () => {

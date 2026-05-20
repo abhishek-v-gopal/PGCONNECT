@@ -1,403 +1,495 @@
 "use client";
-import Head from "next/head";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-// import { properties } from "../data/properties";
-import Navbar from "./components/Navbar";
+import Head from "next/head";
+import { useState, useEffect, useRef } from "react";
 
-const properties = [
-  {
-    id: 1,
-    slug: "the-nordic-house",
-    name: "The Nordic House",
-    tagline: "Calm Scandinavian living in the heart of South Delhi.",
-    location: "Hauz Khas, New Delhi",
-    price: 18500,
-    rating: 4.9,
-    badge: "4 BEDS LEFT",
-    badgeColor: "bg-green-500",
-    bedsLeft: 4,
-    available: true,
-    images: [
-      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80",
-      "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80",
-      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80",
-      "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=400&q=80",
-    ],
-    amenities: ["High-Speed Wi-Fi", "Laundry Service", "Daily Meals", "24/7 Security", "Air Conditioning", "Housekeeping"],
-    rooms: [
-      { type: "Double Sharing", desc: "Twin beds, private wardrobe, city view.", price: 18500, status: "2 BEDS LEFT", available: true },
-      { type: "Triple Sharing", desc: "Bunk beds, shared bathroom, desk space.", price: 14000, status: "2 BEDS LEFT", available: true },
-      { type: "Single Private", desc: "Queen bed, en-suite bathroom, workspace.", price: 26000, status: "SOLD OUT", available: false },
-    ],
-    manager: { name: "Ananya Sharma", role: "Property Manager" },
-    mapLabel: "4th Floor, Hauz Khas Village",
-  },
-  {
-    id: 2,
-    slug: "skyloft-co-living",
-    name: "Skyloft Co-Living",
-    tagline: "Industrial-chic co-living for Bangalore's creative class.",
-    location: "Koramangala, Bangalore",
-    price: 15000,
-    rating: 4.8,
-    badge: "2 BEDS LEFT",
-    badgeColor: "bg-green-500",
-    bedsLeft: 2,
-    available: true,
-    images: [
-      "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80",
-      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80",
-      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80",
-      "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=400&q=80",
-    ],
-    amenities: ["High-Speed Wi-Fi", "Daily Meals", "24/7 Security", "On-site Gym", "EV Charging", "Housekeeping"],
-    rooms: [
-      { type: "Double Sharing", desc: "Twin beds, attached balcony, private wardrobe.", price: 15000, status: "1 BED LEFT", available: true },
-      { type: "Single Private", desc: "King bed, en-suite bathroom, work desk.", price: 22000, status: "1 BED LEFT", available: true },
-      { type: "Triple Sharing", desc: "Bunk beds, shared bathroom, locker.", price: 10000, status: "SOLD OUT", available: false },
-    ],
-    manager: { name: "Rahul Menon", role: "Property Manager" },
-    mapLabel: "5th Block, Koramangala",
-  },
-  {
-    id: 3,
-    slug: "the-sage-sanctuary",
-    name: "The Sage Sanctuary",
-    tagline: "A green, focused retreat for students near Pune University.",
-    location: "Pune University Road, Pune",
-    price: 12800,
-    rating: 4.7,
-    badge: "LAST BED!",
-    badgeColor: "bg-orange-500",
-    bedsLeft: 1,
-    available: true,
-    images: [
-      "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&q=80",
-      "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80",
-      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80",
-      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80",
-    ],
-    amenities: ["High-Speed Wi-Fi", "Daily Meals", "Laundry Service", "24/7 Security", "Air Conditioning", "Housekeeping"],
-    rooms: [
-      { type: "Double Sharing", desc: "Twin beds, study nook, garden view.", price: 12800, status: "LAST BED!", available: true },
-      { type: "Triple Sharing", desc: "Three beds, shared bath, common desk.", price: 9500, status: "SOLD OUT", available: false },
-      { type: "Single Private", desc: "Double bed, private bath, balcony.", price: 19000, status: "SOLD OUT", available: false },
-    ],
-    manager: { name: "Priya Joshi", role: "Property Manager" },
-    mapLabel: "Near Pune University Gate",
-  },
-  {
-    id: 4,
-    slug: "vertex-residences",
-    name: "Vertex Residences",
-    tagline: "Premium tech-forward living in Salt Lake's tech corridor.",
-    location: "Salt Lake City, Kolkata",
-    price: 21000,
-    rating: 4.9,
-    badge: "6 BEDS LEFT",
-    badgeColor: "bg-green-500",
-    bedsLeft: 6,
-    available: true,
-    images: [
-      "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=80",
-      "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=400&q=80",
-      "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80",
-      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80",
-    ],
-    amenities: ["High-Speed Wi-Fi", "Laundry Service", "Daily Meals", "24/7 Security", "Air Conditioning", "On-site Gym", "EV Charging", "Housekeeping"],
-    rooms: [
-      { type: "Double Sharing", desc: "Twin beds, attached balcony, private wardrobe.", price: 21000, status: "3 BEDS LEFT", available: true },
-      { type: "Triple Sharing", desc: "Bunk beds, shared bathroom, desk space.", price: 16000, status: "2 BEDS LEFT", available: true },
-      { type: "Single Private", desc: "Queen bed, en-suite bathroom, workspace.", price: 32000, status: "1 BED LEFT", available: true },
-    ],
-    manager: { name: "Rajesh Kumar", role: "Property Manager" },
-    mapLabel: "Sector V, Salt Lake City",
-  },
+const COLLECTIONS = [
+  { label: "Walk-to-Campus", sub: "Under 10 mins away", img: "https://images.unsplash.com/photo-1562774053-701939374585?w=400&q=80" },
+  { label: "Budget Friendly", sub: "Smart savings", img: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80" },
+  { label: "Verified Luxury", sub: "Premium experiences", img: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=400&q=80" },
+  { label: "Social Hubs", sub: "Vibrant communities", img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80" },
 ];
 
-const filters = [
-  {
-    label: "WiFi",
-    icon: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-        <path d="M1.42 9a16 16 0 0 1 21.16 0" />
-        <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-        <circle cx="12" cy="20" r="1" fill="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    label: "Food Included",
-    icon: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
-        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
-        <line x1="6" y1="1" x2="6" y2="4" /><line x1="10" y1="1" x2="10" y2="4" /><line x1="14" y1="1" x2="14" y2="4" />
-      </svg>
-    ),
-  },
-  {
-    label: "AC Rooms",
-    icon: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="20" height="10" rx="2" />
-        <path d="M7 17l-2 4M17 17l2 4M12 13v8" />
-      </svg>
-    ),
-  },
-  {
-    label: "Laundry",
-    icon: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="2" width="20" height="20" rx="2" />
-        <circle cx="12" cy="13" r="5" />
-        <circle cx="7" cy="6" r="1" fill="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    label: "Filters",
-    icon: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="4" y1="6" x2="20" y2="6" />
-        <line x1="8" y1="12" x2="16" y2="12" />
-        <line x1="11" y1="18" x2="13" y2="18" />
-      </svg>
-    ),
-  },
+const FEATURED = [
+  { id: 1, name: "The Azure Residence", dist: "0.4 miles from University", rating: 4.9, price: 850, badge: "2 beds left", badgeColor: "bg-green-500", img: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=500&q=80" },
+  { id: 2, name: "Ivy Hall Suites", dist: "0.2 miles from University", rating: 4.7, price: 920, badge: "1 bed left", badgeColor: "bg-amber-500", img: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=500&q=80" },
+  { id: 3, name: "The Social Flat", dist: "0.8 miles from University", rating: 4.8, price: 650, badge: "4 beds left", badgeColor: "bg-green-500", img: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=500&q=80" },
+  { id: 4, name: "Starlight Haven", dist: "0.5 miles from University", rating: 4.9, price: 780, badge: "3 beds left", badgeColor: "bg-green-500", img: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=500&q=80" },
 ];
+
+const TESTIMONIALS = [
+  { quote: "Found my perfect room in less than 24 hours. The verification process gave me peace of mind before I even arrived in the city.", name: "Jordan Davies", role: "Computer Science, Stanford", initials: "JD", color: "bg-blue-600" },
+  { quote: "The 'Walk-to-Campus' filter was a lifesaver. PG Connect actually visits these places, which is clear from the quality of photos.", name: "Sarah Lin", role: "Architecture, MIT", initials: "SL", color: "bg-slate-600" },
+  { quote: "I love the social hub listings. I moved into a community of like-minded students and felt at home from day one.", name: "Marcus King", role: "Economics, Oxford", initials: "MK", color: "bg-green-600" },
+];
+
+const STEPS = [
+  { n: 1, title: "Search with Intent", desc: "Filter by distance, price, and lifestyle. Find exactly where you belong." },
+  { n: 2, title: "Virtual or In-Person Visit", desc: "Book a tour through our platform. No hidden surprises, just verified truth." },
+  { n: 3, title: "Seamless Move-In", desc: "Handle all paperwork and first month's payment securely through PG Connect." },
+];
+
+const UNIVERSITIES = ["Stanford", "Cambridge", "MIT", "Oxford"];
 
 export default function Home() {
   const router = useRouter();
-  const [wishlist, setWishlist] = useState([]);
-  const [activeFilter, setActiveFilter] = useState(null);
   const [location, setLocation] = useState("");
-  const [price, setPrice] = useState("Any Price");
-  const [gender, setGender] = useState("Any Gender");
+  const [price, setPrice] = useState("Price Range");
+  const [gender, setGender] = useState("Gender");
+  const [wishlist, setWishlist] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [heroVisible, setHeroVisible] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setHeroVisible(true), 80);
+    return () => clearTimeout(t);
+  }, []);
 
   const toggleWishlist = (e, id) => {
     e.stopPropagation();
-    setWishlist((prev) =>
-      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]
-    );
+    setWishlist(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   };
 
-  const goToProperty = (id) => {
-    router.push(`/${id}`);
-  };
+  const goSearch = () => router.push(`/search?location=${encodeURIComponent(location || "Koramangala")}&price=${encodeURIComponent(price)}&gender=${encodeURIComponent(gender)}`);
 
   return (
     <>
       <Head>
-        <title>PG Connect — Curated Spaces for Modern Living</title>
+        <title>PG Connect — Find Your Curated Sanctuary</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="description" content="Experience high-end editorial student housing." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap"
-          rel="stylesheet"
-        />
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <style>{`
-          body { font-family: 'DM Sans', sans-serif; }
-          .font-serif-display { font-family: 'DM Serif Display', serif; }
-          .no-scrollbar::-webkit-scrollbar { display: none; }
-          .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-          select { appearance: none; background: transparent; }
-          .card-img { transition: transform 0.4s ease; }
-          .property-card:hover .card-img { transform: scale(1.06); }
+          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          html { scroll-behavior: smooth; }
+          body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #0f1117; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+          .font-display { font-family: 'Fraunces', serif; }
+          select { appearance: none; background: transparent; cursor: pointer; }
+          .no-scroll::-webkit-scrollbar { display: none; }
+          .no-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+          /* Hero animations */
+          .hero-fade { opacity: 0; transform: translateY(28px); transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1); }
+          .hero-fade.in { opacity: 1; transform: translateY(0); }
+          .delay-1 { transition-delay: .1s; }
+          .delay-2 { transition-delay: .22s; }
+          .delay-3 { transition-delay: .36s; }
+          .delay-4 { transition-delay: .5s; }
+
+          /* Card hover */
+          .pg-card { transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s; }
+          .pg-card:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(0,0,0,.13); }
+          .pg-card .card-img { transition: transform .5s cubic-bezier(.22,1,.36,1); }
+          .pg-card:hover .card-img { transform: scale(1.07); }
+
+
+          /* Step number */
+          .step-num { width: 32px; height: 32px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+          /* Search bar input */
+          .search-field { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+          .search-field label { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #94a3b8; }
+          .search-field input, .search-field select { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; color: #0f1117; border: none; outline: none; background: transparent; width: 100%; }
+          .search-field input::placeholder { color: #94a3b8; font-weight: 500; }
+
+          /* University trust logos */
+          .uni-logo { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #64748b; }
+
+          /* Smooth section reveal via intersection observer */
+          .reveal { opacity: 0; transform: translateY(32px); transition: opacity .65s cubic-bezier(.22,1,.36,1), transform .65s cubic-bezier(.22,1,.36,1); }
+          .reveal.visible { opacity: 1; transform: translateY(0); }
         `}</style>
       </Head>
 
-      <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden">
+      <div className="min-h-screen bg-white text-black/90">
 
         {/* ── NAVBAR ── */}
-        <Navbar />
+        <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+            <button onClick={() => router.push("/")} className="font-display text-blue-600 text-lg font-bold tracking-tight cursor-pointer shrink-0">PG Connect</button>
+
+            <div className="hidden md:flex items-center gap-0.5">
+              {[["Explore", true], ["List Property", false], ["Student Guides", false], ["Help", false]].map(([l, active]) => (
+                <button key={l}
+                  onClick={() => l === "List Property" ? router.push("/list-property") : null}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer
+                    ${active ? "text-blue-600 border-b-2 border-blue-600 rounded-none pb-[10px]" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button onClick={() => router.push("/signin")}
+                className="bg-blue-600 hover:bg-blue-700 active:scale-[.98] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer hidden sm:block">
+                Sign In
+              </button>
+              <button className="md:hidden p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg" onClick={() => setMenuOpen(!menuOpen)}>
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          {menuOpen && (
+            <div className="md:hidden border-t border-slate-100 bg-white px-4 py-4 flex flex-col gap-3">
+              {["Explore", "List Property", "Student Guides", "Help"].map(l => (
+                <button key={l} className="text-sm font-medium text-slate-600 text-left">{l}</button>
+              ))}
+              <button onClick={() => router.push("/signin")} className="bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl mt-1">Sign In</button>
+            </div>
+          )}
+        </nav>
 
         {/* ── HERO ── */}
-        <section className="bg-white text-center px-4 pt-10 pb-8 sm:pt-16 sm:pb-10">
-          <h1 className="text-[2rem] sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-slate-900">
-            Curated spaces for <span className="text-blue-600">Modern Living.</span>
-          </h1>
-          <p className="mt-4 text-slate-500 text-sm sm:text-base leading-relaxed max-w-md mx-auto">
-            Experience high-end editorial student housing. No clutter, just quality living spaces designed for your success.
-          </p>
-
-          {/* Search — desktop */}
-          <div className="hidden sm:flex mt-8 mx-auto max-w-2xl lg:max-w-3xl bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden p-1 items-stretch">
-            <div className="flex-1 flex flex-col px-5 py-3 border-r border-slate-100 min-w-0">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Location</label>
-              <input type="text" placeholder="Where to?" value={location} onChange={(e) => setLocation(e.target.value)}
-                className="text-sm font-medium text-slate-900 outline-none bg-transparent placeholder-slate-400 w-full" />
+        <section className="relative min-h-[88vh] flex items-center overflow-hidden bg-slate-50">
+          {/* Background image right side */}
+          <div className="absolute inset-0 flex">
+            <div className="w-full md:w-1/2" />
+            <div className="hidden md:block w-1/2 relative">
+              <img
+                src="https://images.unsplash.com/photo-1554995207-c18c203602cb?w=900&q=85"
+                alt="Modern student room"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-50 via-slate-50/40 to-transparent" />
             </div>
-            <div className="flex-1 flex flex-col px-5 py-3 border-r border-slate-100 min-w-0">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Price Range</label>
-              <select value={price} onChange={(e) => setPrice(e.target.value)} className="text-sm font-medium text-slate-900 outline-none w-full cursor-pointer">
-                <option>Any Price</option>
-                <option>Under ₹10,000</option>
-                <option>₹10,000 – ₹15,000</option>
-                <option>₹15,000 – ₹20,000</option>
-                <option>Above ₹20,000</option>
-              </select>
-            </div>
-            <div className="flex-1 flex flex-col px-5 py-3 min-w-0">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Gender</label>
-              <select value={gender} onChange={(e) => setGender(e.target.value)} className="text-sm font-medium text-slate-900 outline-none w-full cursor-pointer">
-                <option>Any Gender</option>
-                <option>Boys</option>
-                <option>Girls</option>
-                <option>Co-ed</option>
-              </select>
-            </div>
-            <button className="bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white rounded-xl px-6 py-3 text-sm font-semibold flex items-center gap-2 shrink-0 m-1 cursor-pointer">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              Search
-            </button>
           </div>
 
-          {/* Search — mobile */}
-          <div className="sm:hidden mt-6 bg-white border border-slate-200 rounded-2xl shadow-md overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Location</label>
-              <input type="text" placeholder="Where to?" value={location} onChange={(e) => setLocation(e.target.value)}
-                className="text-sm font-medium text-slate-900 outline-none bg-transparent placeholder-slate-400 w-full" />
-            </div>
-            <div className="flex">
-              <div className="flex-1 px-4 py-3 border-r border-slate-100">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Price</label>
-                <select value={price} onChange={(e) => setPrice(e.target.value)} className="text-sm font-medium text-slate-900 outline-none w-full cursor-pointer">
-                  <option>Any Price</option><option>Under ₹10,000</option><option>₹10k–₹15k</option><option>₹15k–₹20k</option><option>Above ₹20k</option>
-                </select>
+          {/* Content */}
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24 w-full text-black/90">
+            <div className="max-w-xl">
+              <div className={`hero-fade${heroVisible ? " in" : ""}`}>
+                <span className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-6">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                  2,400+ Verified Listings
+                </span>
               </div>
-              <div className="flex-1 px-4 py-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Gender</label>
-                <select value={gender} onChange={(e) => setGender(e.target.value)} className="text-sm font-medium text-slate-900 outline-none w-full cursor-pointer">
-                  <option>Any Gender</option><option>Boys</option><option>Girls</option><option>Co-ed</option>
-                </select>
-              </div>
-            </div>
-            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              Search
-            </button>
-          </div>
-        </section>
 
-        {/* ── FILTER CHIPS ── */}
-        <div className="no-scrollbar flex gap-2 sm:gap-3 overflow-x-auto px-4 sm:px-6 lg:px-12 py-4 sm:py-5 sm:justify-center">
-          {filters.map((f) => (
-            <button
-              key={f.label}
-              onClick={() => setActiveFilter(activeFilter === f.label ? null : f.label)}
-              className={`flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-full border text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200 shrink-0 cursor-pointer
-                ${activeFilter === f.label ? "border-blue-600 text-blue-600 bg-blue-50" : "border-slate-200 text-slate-700 bg-white hover:border-blue-400 hover:text-blue-500"}`}
-            >
-              {f.icon}{f.label}
-            </button>
-          ))}
-        </div>
+              <h1 className={`font-display text-[3.2rem] sm:text-[4rem] lg:text-[4.8rem] leading-[1.05] font-bold tracking-tight mb-6 hero-fade${heroVisible ? " in" : ""} delay-1`}>
+                Find your{" "}
+                <span className="text-blue-600 italic">curated</span>
+                <br />
+                <span className="text-blue-600 italic">sanctuary</span> for
+                <br />
+                university life.
+              </h1>
 
-        {/* ── PROPERTY CARDS ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pb-16">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
-            {properties.map((p) => (
-              <div
-                key={p.id}
-                onClick={() => goToProperty(p.id)}
-                className="property-card bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
-              >
-                {/* Image */}
-                <div className="relative overflow-hidden aspect-[4/3]">
-                  <img src={p.images[0]} alt={p.name} loading="lazy" className="card-img w-full h-full object-cover" />
-                  <span className={`absolute top-3 left-3 ${p.badgeColor} text-white text-[10px] font-bold tracking-wide px-2.5 py-1 rounded-md`}>
-                    {p.badge}
-                  </span>
-                  <button
-                    onClick={(e) => toggleWishlist(e, p.id)}
-                    aria-label="Wishlist"
-                    className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24"
-                      fill={wishlist.includes(p.id) ? "#ef4444" : "none"}
-                      stroke={wishlist.includes(p.id) ? "#ef4444" : "#94a3b8"}
-                      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              <p className={`text-slate-500 text-base sm:text-lg leading-relaxed max-w-md mb-10 hero-fade${heroVisible ? " in" : ""} delay-2`}>
+                Beyond just a room. Discover premium student living spaces hand-picked for comfort, community, and academic success.
+              </p>
+
+              {/* Search bar */}
+              <div className={`hero-fade${heroVisible ? " in" : ""} delay-3 w-full`}>
+                {/* Tablet & Desktop search (md and up) */}
+                <div className="hidden md:flex bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden p-1 items-center gap-0.5 w-full lg:max-w-2xl">
+                  <div className="search-field flex-1 px-3 sm:px-4 py-2.5 border-r border-slate-100 min-w-0">
+                    {/* <label>Near University</label> */}
+                    <input type="text" placeholder="Near University..." value={location} onChange={e => setLocation(e.target.value)} onKeyDown={e => e.key === "Enter" && goSearch()} />
+                  </div>
+                  <div className="search-field flex-1 px-3 sm:px-4 py-2.5 border-r border-slate-100 min-w-0">
+                    {/* <label>Price Range</label> */}
+                    <select value={price} onChange={e => setPrice(e.target.value)}>
+                      <option>Price Range</option>
+                      <option>Under ₹10k</option>
+                      <option>₹10k–₹20k</option>
+                      <option>Above ₹20k</option>
+                    </select>
+                  </div>
+                  <div className="search-field flex-1 px-3 sm:px-4 py-2.5 min-w-0">
+                    {/* <label>Gender</label> */}
+                    <select value={gender} onChange={e => setGender(e.target.value)}>
+                      <option>Gender</option>
+                      <option>Boys</option>
+                      <option>Girls</option>
+                      <option>Co-ed</option>
+                    </select>
+                  </div>
+                  <button onClick={goSearch} className="bg-blue-600 hover:bg-blue-700 active:scale-[.97] text-white text-xs sm:text-sm font-bold px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 m-0.5">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
+                    <span className="hidden sm:inline">Search</span>
                   </button>
                 </div>
 
-                {/* Card body */}
-                <div className="p-3.5 sm:p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">{p.name}</span>
-                    <span className="flex items-center gap-0.5 text-xs font-semibold text-slate-800 shrink-0">
-                      <span className="text-blue-600">★</span>{p.rating}
-                    </span>
+                {/* Small tablet search (sm to md) - Stack layout */}
+                <div className="hidden sm:flex md:hidden flex-col gap-2.5">
+                  <div className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
+                    <div className="px-3.5 py-2.5 border-b border-slate-100">
+                      <label className="block text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Near University</label>
+                      <input type="text" placeholder="Search by university..." value={location} onChange={e => setLocation(e.target.value)}
+                        className="w-full text-xs sm:text-sm font-semibold text-slate-900 outline-none bg-transparent placeholder-slate-400" />
+                    </div>
+                    <div className="flex gap-0">
+                      <div className="flex-1 px-3.5 py-2.5 border-r border-slate-100">
+                        <label className="block text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Price</label>
+                        <select value={price} onChange={e => setPrice(e.target.value)} className="w-full text-xs sm:text-sm font-semibold text-slate-900 outline-none bg-transparent">
+                          <option>Price Range</option><option>Under ₹10k</option><option>₹10k–₹20k</option><option>Above ₹20k</option>
+                        </select>
+                      </div>
+                      <div className="flex-1 px-3.5 py-2.5">
+                        <label className="block text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Gender</label>
+                        <select value={gender} onChange={e => setGender(e.target.value)} className="w-full text-xs sm:text-sm font-semibold text-slate-900 outline-none bg-transparent">
+                          <option>Gender</option><option>Boys</option><option>Girls</option><option>Co-ed</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">{p.location}</p>
-                  <p className="mt-3 text-[15px] font-bold text-slate-900">
-                    ₹{p.price.toLocaleString("en-IN")}<span className="text-xs font-normal text-slate-500"> / bed</span>
-                  </p>
+                  <button onClick={goSearch} className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[.97] text-white font-semibold text-sm py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    Search
+                  </button>
+                </div>
+
+                {/* Mobile search (below sm) - Full stack */}
+                <div className="sm:hidden flex flex-col gap-2">
+                  <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <label className="block text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Near University</label>
+                      <input type="text" placeholder="Search by city or university..." value={location} onChange={e => setLocation(e.target.value)}
+                        className="w-full text-sm font-semibold text-slate-900 outline-none bg-transparent placeholder-slate-400" />
+                    </div>
+                    <div className="flex">
+                      <div className="flex-1 px-4 py-3 border-r border-slate-100">
+                        <label className="block text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Price</label>
+                        <select value={price} onChange={e => setPrice(e.target.value)} className="w-full text-sm font-semibold text-slate-900 outline-none bg-transparent">
+                          <option>Price Range</option><option>Under ₹10k</option><option>₹10k–₹20k</option><option>Above ₹20k</option>
+                        </select>
+                      </div>
+                      <div className="flex-1 px-4 py-3">
+                        <label className="block text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Gender</label>
+                        <select value={gender} onChange={e => setGender(e.target.value)} className="w-full text-sm font-semibold text-slate-900 outline-none bg-transparent">
+                          <option>Gender</option><option>Boys</option><option>Girls</option><option>Co-ed</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={goSearch} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    Search Properties
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── CURATED COLLECTIONS ── */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-20 ">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-slate-900">Curated Collections</h2>
+              <p className="text-sm text-slate-500 mt-1">Tailored living spaces for every student need.</p>
+            </div>
+            <button onClick={goSearch} className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1">
+              View All Collections
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {COLLECTIONS.map((c, i) => (
+              <div key={c.label} className="relative overflow-hidden rounded-2xl cursor-pointer aspect-square w-full flex items-center justify-center group" onClick={goSearch}>
+                <img src={c.img} alt={c.label} loading="lazy" className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/0 to-transparent"></div>
+                <div className="absolute bottom-0 left-0 right-0 z-10 p-4">
+                  <p className="text-white font-bold text-sm sm:text-base leading-tight">{c.label}</p>
+                  <p className="text-white/70 text-xs mt-0.5">{c.sub}</p>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ── EXPERIENCE SECTION ── */}
-        <section className="bg-slate-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-14 sm:py-20 lg:py-24">
-            <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-              <div className="flex-1 w-full order-2 lg:order-1">
-                <p className="text-[11px] font-bold uppercase tracking-[2px] text-blue-600 mb-4">The Experience</p>
-                <h2 className="font-serif-display text-3xl sm:text-4xl lg:text-[2.8rem] text-slate-900 leading-tight mb-5">
-                  Beyond just four walls and a bed.
-                </h2>
-                <p className="text-slate-500 text-sm sm:text-base leading-relaxed mb-8 max-w-lg">
-                  We curate spaces that inspire growth. Our PGs are selected based on strict editorial standards for design, safety, and community vibe.
-                </p>
-                <div className="flex flex-col gap-4">
-                  {[
-                    { label: "Verified Safety Standards", icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /> },
-                    { label: "Curated Student Community", icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></> },
-                  ].map((f) => (
-                    <div key={f.label} className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
-                        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{f.icon}</svg>
+        {/* ── TOP RATED PROPERTIES ── */}
+        <section className="bg-slate-50 py-14 sm:py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="text-center mb-10">
+              <span className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-4">
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Top Rated Properties
+              </span>
+              <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900">
+                Discover the Best of Campus Living
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+              {FEATURED.map(p => (
+                <div key={p.id} className="pg-card bg-white rounded-2xl overflow-hidden border border-slate-200 cursor-pointer" onClick={() => router.push(`/property/${p.id}`)}>
+                  <div className="relative overflow-hidden aspect-[4/3]">
+                    <img src={p.img} alt={p.name} loading="lazy" className="card-img w-full h-full object-cover" />
+                    <span className={`absolute top-3 left-3 ${p.badgeColor} text-white text-[10px] font-bold px-2.5 py-1 rounded-full`}>{p.badge}</span>
+                    <button onClick={e => toggleWishlist(e, p.id)} className="absolute top-3 right-3 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill={wishlist.includes(p.id) ? "#ef4444" : "none"} stroke={wishlist.includes(p.id) ? "#ef4444" : "#94a3b8"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-1 mb-1">
+                      <p className="font-bold text-sm text-slate-900 leading-snug">{p.name}</p>
+                      <span className="flex items-center gap-0.5 text-xs font-bold text-slate-800 shrink-0">
+                        <span className="text-blue-500">★</span>{p.rating}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mb-3 flex items-center gap-1">
+                      <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      {p.dist}
+                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-lg font-bold text-slate-900">${p.price}</span>
+                        <span className="text-xs text-slate-400"> /month</span>
                       </div>
-                      <span className="text-sm sm:text-base font-semibold text-slate-900">{f.label}</span>
+                      <button onClick={e => { e.stopPropagation(); router.push(`/property/${p.id}`); }}
+                        className="border border-slate-200 hover:border-blue-500 hover:text-blue-600 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer">
+                        Details
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── TRUST SECTION ── */}
+        <section className="py-14 sm:py-20 border-b border-slate-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            {/* University logos */}
+            <div className="text-center mb-12">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-6">Trusted by students from</p>
+              <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
+                {UNIVERSITIES.map(u => (
+                  <div key={u} className="uni-logo">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    </svg>
+                    {u}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Testimonials */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              {TESTIMONIALS.map((t, i) => (
+                <div key={i} className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                  <p className="text-sm text-slate-600 leading-relaxed mb-5">"{t.quote}"</p>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-full ${t.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>{t.initials}</div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">{t.name}</p>
+                      <p className="text-[11px] text-slate-400">{t.role}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── THREE STEPS ── */}
+        <section className="py-14 sm:py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+              {/* Left text */}
+              <div className="flex-1 w-full">
+                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 leading-tight mb-10">
+                  Three steps to your new university life.
+                </h2>
+                <div className="space-y-7">
+                  {STEPS.map(s => (
+                    <div key={s.n} className="flex items-start gap-4">
+                      <div className="step-num shrink-0 mt-0.5">{s.n}</div>
+                      <div>
+                        <p className="font-bold text-slate-900 text-base mb-1">{s.title}</p>
+                        <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="flex-1 w-full order-1 lg:order-2">
+
+              {/* Right image */}
+              <div className="flex-1 w-full relative">
                 <div className="rounded-2xl overflow-hidden shadow-2xl">
-                  <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80" alt="Students collaborating"
-                    className="w-full h-56 sm:h-72 lg:h-[420px] object-cover block" />
+                  <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80" alt="Student moving in" className="w-full h-72 sm:h-96 object-cover block" />
+                </div>
+                {/* Floating verified badge */}
+                <div className="absolute bottom-6 left-6 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 border border-slate-100">
+                  <div className="w-9 h-9 bg-green-500 rounded-full flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">Verified Status</p>
+                    <p className="text-[10px] text-slate-400">Background check complete</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── FOOTER ── */}
-        <footer className="bg-white border-t border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 sm:py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="font-serif-display text-base text-slate-900">PG Connect</p>
-              <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
+        {/* ── CTA BANNER ── */}
+        <section className="mx-4 sm:mx-6 lg:mx-8 mb-14 sm:mb-20 rounded-3xl bg-blue-600 overflow-hidden relative">
+          {/* Decorative blobs */}
+          <div className="absolute -top-16 -right-16 w-64 h-64 bg-blue-500 rounded-full opacity-50" />
+          <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-blue-700 rounded-full opacity-40" />
+          <div className="relative z-10 text-center px-6 py-16 sm:py-20">
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
+              List your property and reach<br />
+              <span className="italic">50k+ students.</span>
+            </h2>
+            <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto mb-9 leading-relaxed">
+              Join our curated network of property owners providing high-quality student housing across the globe.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button onClick={() => router.push("/list-property")}
+                className="bg-white hover:bg-slate-50 active:scale-[.98] text-blue-700 font-bold text-sm px-7 py-3.5 rounded-2xl transition-all cursor-pointer">
+                Get Started Now
+              </button>
+              <button className="border border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-7 py-3.5 rounded-2xl transition-all cursor-pointer">
+                Speak to an Expert
+              </button>
             </div>
-            <div className="flex flex-wrap gap-4 sm:gap-6">
-              {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((link) => (
-                <a key={link} href="#" className="text-xs sm:text-sm text-slate-500 hover:text-blue-600 transition-colors">{link}</a>
+          </div>
+        </section>
+
+        {/* ── FOOTER ── */}
+        <footer className="border-t border-slate-100 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <p className="font-display font-bold text-slate-900 text-base">PG Connect</p>
+              <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. The Curated Sanctuary</p>
+            </div>
+            <div className="flex flex-wrap gap-5 items-center">
+              {["About Us", "Privacy", "Terms", "Support", "Careers"].map(l => (
+                <a key={l} href="#" className="text-xs text-slate-500 hover:text-blue-600 transition-colors">{l}</a>
               ))}
+              <div className="flex items-center gap-2 ml-2">
+                <button className="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-500 transition-colors cursor-pointer">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                  </svg>
+                </button>
+                <button className="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-500 transition-colors cursor-pointer">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </footer>

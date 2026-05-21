@@ -8,10 +8,32 @@ const { protect } = require("../middleware/auth.middleware");
 
 authRouter.post("/register",
   [
-    body("name").notEmpty().withMessage("Name is required"),
-    body("email").isEmail().withMessage("Valid email required"),
-    body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
-    body("role").optional().isIn(["student", "owner"]).withMessage("Role must be student or owner"),
+    body("FirstName")
+      .notEmpty()
+      .withMessage("First name is required"),
+
+    body("LastName")
+      .notEmpty()
+      .withMessage("Last name is required"),
+
+    body("email")
+      .isEmail()
+      .withMessage("Valid email required"),
+
+    body("password")
+      .isLength({ min: 6 })
+      .withMessage("Password must be at least 6 characters"),
+
+    body("role")
+      .optional()
+      .isIn(["student", "owner"])
+      .withMessage("Role must be student or owner"),
+
+    body("university")
+      .if(body("role").equals("student"))
+      .optional()
+      .notEmpty()
+      .withMessage("University cannot be empty if provided"),
   ],
   authCtrl.register
 );

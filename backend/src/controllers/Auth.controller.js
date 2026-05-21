@@ -32,14 +32,14 @@ exports.register = async (req, res, next) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { name, email, password, role, phone, university } = req.body;
+    const { FirstName, LastName, email, password, role, phone, university } = req.body;
 
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(409).json({ success: false, message: "Email already registered." });
     }
 
-    const user = await User.create({ name, email, password, role, phone, university });
+    const user = await User.create({ FirstName, LastName, email, password, role, phone, university });
     sendToken(user, 201, res);
   } catch (err) {
     next(err);

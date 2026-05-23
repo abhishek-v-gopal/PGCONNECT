@@ -34,6 +34,15 @@ authRouter.post("/register",
       .optional()
       .notEmpty()
       .withMessage("University cannot be empty if provided"),
+    body("phone")
+      .optional()
+      .isMobilePhone()
+      .withMessage("Valid phone number required"),
+    body("city")
+      .if(body("role").equals("owner"))
+      .optional()
+      .notEmpty()
+      .withMessage("City cannot be empty if provided")
   ],
   authCtrl.register
 );

@@ -36,6 +36,7 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     avatar: { type: String, default: "" },
     googleId: { type: String, default: "" },
+    
 
     // Owner-specific
     isVerifiedOwner: { type: Boolean, default: false },

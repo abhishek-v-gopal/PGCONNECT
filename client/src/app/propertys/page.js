@@ -409,7 +409,7 @@ export default function SearchResults() {
                 <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Sort By</span>
                 <div className="relative">
                   <select value={sort} onChange={(e) => setSort(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 cursor-pointer">
+                    className="appearance-none bg-white border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 cursor-pointer">
                     {SORT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                   </select>
                   <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -112,7 +112,7 @@ export default function Home() {
             <div className="hidden md:flex items-center gap-0.5">
               {[["Explore", true], ["List Property", false], ["Student Guides", false], ["Help", false]].map(([l, active]) => (
                 <button key={l}
-                  onClick={() => l === "List Property" ? router.push("/list-property") : null}
+                  onClick={() => l === "List Property" ? router.push("/propertys") : null}
                   className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer
                     ${active ? "text-blue-600 border-b-2 border-blue-600 rounded-none pb-[10px]" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"}`}>
                   {l}

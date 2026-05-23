@@ -218,7 +218,7 @@ export default function SignIn() {
 
               <p className="text-center text-sm text-slate-500 mt-5">
                 Don&apos;t have an account?{" "}
-                <a href="#" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">Sign Up</a>
+                <a href="/register  " className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">Sign Up</a>
               </p>
             </div>
 

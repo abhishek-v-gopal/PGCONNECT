@@ -2,6 +2,7 @@
 import Head from "next/head";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { userRegister } from "../api";
 
 const STEPS = ["Account", "Personal", "Preferences"];
 
@@ -56,14 +57,18 @@ export default function Register() {
       if (!form.firstName.trim()) e.firstName = "First name required.";
       if (!form.lastName.trim()) e.lastName = "Last name required.";
       if (!form.phone.trim()) e.phone = "Phone number required.";
+      if (form.role === "student" && !form.university) e.university = "Select your university.";
+      if (form.role === "student" && !form.agreeTerms) e.agreeTerms = "You must accept the terms.";
     }
     if (step === 2) {
-      if (form.role === "student" && !form.university) e.university = "Select your university.";
-      if (!form.agreeTerms) e.agreeTerms = "You must accept the terms.";
+      if (form.role === "owner" && !form.agreeTerms) e.agreeTerms = "You must accept the terms.";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
+
+  // dynamic last step: students finish on step 1, owners on step 2
+  const lastStep = form.role === "student" ? 1 : 2;
 
   const next = () => { if (validate()) setStep(s => s + 1); };
   const back = () => { setErrors({}); setStep(s => s - 1); };
@@ -72,10 +77,30 @@ export default function Register() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1400));
-    setLoading(false);
-    setSubmitted(true);
-    setTimeout(() => router.push("/signin"), 2000);
+    try {
+      const payload = {
+        FirstName: form.firstName,
+        LastName: form.lastName,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+      };
+      if (form.role === "student") {
+        payload.university = form.university;
+      }
+      if (form.role === "owner") {
+        payload.city = form.propertyCity;
+      }
+
+      await userRegister(payload);
+      setSubmitted(true);
+      setTimeout(() => router.push("/signin"), 2000);
+    } catch (err) {
+      console.error('Registration error:', err);
+      setErrors(prev => ({ ...prev, submit: err?.response?.data?.message || err.message || 'Registration failed' }));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const strength = (() => {
@@ -360,6 +385,29 @@ export default function Register() {
                       </div>
                     )}
 
+                    {form.role === "student" && (
+                      <label className="flex items-start gap-3 cursor-pointer mt-4">
+                        <div
+                          onClick={() => set("agreeTerms", !form.agreeTerms)}
+                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
+                            form.agreeTerms ? "bg-blue-600 border-blue-600" : "border-slate-300 hover:border-blue-400"
+                          }`}
+                        >
+                          {form.agreeTerms && (
+                            <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="2 6 5 9 10 3" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-xs text-slate-500 leading-relaxed">
+                          I agree to PG Connect's{" "}
+                          <a href="#" className="text-blue-600 font-semibold hover:underline">Terms of Service</a> and{" "}
+                          <a href="#" className="text-blue-600 font-semibold hover:underline">Privacy Policy</a>.
+                          I confirm I am 18 years or older.
+                        </span>
+                      </label>
+                    )}
+
                     </div>
                   )}
 
@@ -383,7 +431,7 @@ export default function Register() {
                                 onChange={(e) => set("university", e.target.value)}
                                 className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all appearance-none"
                               >
-                                <option value="">Select your university</option>
+                                <option value="">Enter your university</option>
                                 {universities.map(u => <option key={u}>{u}</option>)}
                               </select>
                               <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -495,7 +543,7 @@ export default function Register() {
                         Back
                       </button>
                     )}
-                    {step < 2 ? (
+                    {step < lastStep ? (
                       <button
                         type="button"
                         onClick={next}

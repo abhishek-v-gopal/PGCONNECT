@@ -181,7 +181,7 @@ export default function OwnerDashboard() {
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1">
 
           {/* ── SIDEBAR ── */}
           {/* Mobile overlay */}
@@ -190,12 +190,12 @@ export default function OwnerDashboard() {
           )}
 
           <aside className={`
-            fixed lg:sticky top-0 lg:top-14 z-50 lg:z-auto
-            h-screen lg:h-[calc(100vh-56px)]
-            w-56 bg-white border-r border-slate-200
-            flex flex-col sidebar-scroll overflow-y-auto
+            fixed inset-y-0 left-0 z-50 
+            h-screen w-56 bg-white border-r border-slate-200
+            flex flex-col overflow-hidden
             transition-transform duration-300
             ${sidebarOpen ? "translate-x-0 slide-in" : "-translate-x-full lg:translate-x-0"}
+            lg:!sticky lg:top-14 lg:h-[calc(100vh-56px)] lg:self-start lg:z-30
           `}>
             {/* Logo inside sidebar (desktop) */}
             <div className="hidden lg:block px-5 pt-6 pb-4">

@@ -2,19 +2,13 @@
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import { useState, useEffect, useRef } from "react";
+import { getAllProperties, getCurrentUser, saveProperty } from "./api";
 
 const COLLECTIONS = [
   { label: "Walk-to-Campus", sub: "Under 10 mins away", img: "https://images.unsplash.com/photo-1562774053-701939374585?w=400&q=80" },
   { label: "Budget Friendly", sub: "Smart savings", img: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80" },
   { label: "Verified Luxury", sub: "Premium experiences", img: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=400&q=80" },
   { label: "Social Hubs", sub: "Vibrant communities", img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80" },
-];
-
-const FEATURED = [
-  { id: 1, name: "The Azure Residence", dist: "0.4 miles from University", rating: 4.9, price: 850, badge: "2 beds left", badgeColor: "bg-green-500", img: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=500&q=80" },
-  { id: 2, name: "Ivy Hall Suites", dist: "0.2 miles from University", rating: 4.7, price: 920, badge: "1 bed left", badgeColor: "bg-amber-500", img: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=500&q=80" },
-  { id: 3, name: "The Social Flat", dist: "0.8 miles from University", rating: 4.8, price: 650, badge: "4 beds left", badgeColor: "bg-green-500", img: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=500&q=80" },
-  { id: 4, name: "Starlight Haven", dist: "0.5 miles from University", rating: 4.9, price: 780, badge: "3 beds left", badgeColor: "bg-green-500", img: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=500&q=80" },
 ];
 
 const TESTIMONIALS = [
@@ -45,12 +39,109 @@ export default function Home() {
     return () => clearTimeout(t);
   }, []);
 
-  const toggleWishlist = (e, id) => {
+  // Top 4 featured properties by rating
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const featuredProperties = properties
+    .slice()
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    .slice(0, 4);
+
+  // Apply homepage search filters to featured properties (live-bind)
+  const displayedFeatured = featuredProperties.filter((p) => {
+    if (location && !String(p.location || "").toLowerCase().includes(location.toLowerCase())) return false;
+    if (price === "Under ₹10k" && Number(p.price) >= 10000) return false;
+    if (price === "₹10k–₹20k" && (Number(p.price) < 10000 || Number(p.price) > 20000)) return false;
+    if (price === "Above ₹20k" && Number(p.price) <= 20000) return false;
+    if (gender !== "Gender" && gender !== "Any" && p.gender && p.gender !== gender && p.gender !== "Co-ed") return false;
+    return true;
+  });
+
+  // If filters remove all, fall back to top featured
+  const featuredToShow = displayedFeatured.length > 0 ? displayedFeatured : featuredProperties;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const response = await getAllProperties();
+        const raw = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.properties)
+          ? response.properties
+          : [];
+
+        const list = raw.map((p) => ({
+          id: p._id || p.id,
+          name: p.name || "Untitled Property",
+          location: (p.location && (p.location.address || p.location.city)) || "",
+          dist: (p.location && (p.location.landmark || p.location.city)) || "",
+          rating: p.rating ?? 0,
+          price: Number(p.startingPrice ?? p.rooms?.[0]?.price ?? p.price ?? 0),
+          badge: p.isVerified || p.status === "verified" ? "VERIFIED" : p.badge || null,
+          badgeColor: p.isVerified || p.status === "verified" ? "bg-green-500" : p.badgeColor || "bg-amber-500",
+          img: (p.images && p.images[0]) || p.img || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=500&q=80",
+          gender: p.gender || "Any",
+        }));
+
+        if (mounted) setProperties(list);
+      } catch (err) {
+        if (mounted) {
+          setError("Unable to load properties right now.");
+          setProperties([]);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+      
+  const toggleWishlist = async (e, id) => {
     e.stopPropagation();
-    setWishlist(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+    try {
+      const res = await saveProperty(id);
+      if (res && res.success && res.saved) {
+        setWishlist(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+        // decide redirect based on logged-in user's role
+        try {
+          const user = await getCurrentUser();
+          const role = user?.role || user?.data?.role || "";
+          if (String(role).toLowerCase() === "student") {
+            router.push("/propertys");
+            return;
+          }
+          if (String(role).toLowerCase() === "owner" || String(role).toLowerCase() === "landlord") {
+            router.push("/ownersDashboard");
+            return;
+          }
+        } catch (innerErr) {
+          console.error('Unable to determine user role for redirect', innerErr);
+        }
+      } else {
+        console.warn('Save API responded but did not confirm save', res);
+      }
+    } catch (err) {
+      console.error('Error saving property:', err);
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        // Not authenticated/authorized — send user to sign in
+        router.push('/signin');
+        return;
+      }
+    }
   };
 
-  const goSearch = () => router.push(`/search?location=${encodeURIComponent(location || "Koramangala")}&price=${encodeURIComponent(price)}&gender=${encodeURIComponent(gender)}`);
+  const goSearch = () => router.push(`/propertys?location=${encodeURIComponent(location || "Koramangala")}&price=${encodeURIComponent(price)}&gender=${encodeURIComponent(gender)}`);
 
   return (
     <>
@@ -323,7 +414,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-              {FEATURED.map(p => (
+              {featuredToShow.map(p => (
                 <div key={p.id} className="pg-card bg-white rounded-2xl overflow-hidden border border-slate-200 cursor-pointer" onClick={() => router.push(`/property/${p.id}`)}>
                   <div className="relative overflow-hidden aspect-[4/3]">
                     <img src={p.img} alt={p.name} loading="lazy" className="card-img w-full h-full object-cover" />

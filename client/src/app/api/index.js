@@ -2,6 +2,34 @@ import axios from "axios";
 
 const BASE_URL = "http://localhost:5000";
 
+// send cookies (session) for authorized endpoints
+axios.defaults.withCredentials = true;
+
+const getCookieValue = (name) => {
+    if (typeof document === "undefined") return "";
+    const cookies = document.cookie ? document.cookie.split(";") : [];
+    for (const item of cookies) {
+        const [k, ...rest] = item.trim().split("=");
+        if (k === name) return decodeURIComponent(rest.join("="));
+    }
+    return "";
+};
+
+const getAuthHeaders = () => {
+    const token =
+        getCookieValue("token") ||
+        getCookieValue("authToken") ||
+        getCookieValue("jwt") ||
+        "";
+
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const getAuthConfig = () => ({
+    withCredentials: true,
+    headers: getAuthHeaders(),
+});
+
 
 
 //login
@@ -50,7 +78,7 @@ export const logout = async () => {
 //get current user
 export const getCurrentUser = async () => {
     try {
-        const response = await axios.get(`${BASE_URL}/api/auth/user`);
+        const response = await axios.get(`${BASE_URL}/api/auth/me`);
         console.log('Current user:', response.data);
         return response.data;
     } catch (error) {
@@ -90,4 +118,37 @@ export const getPropertyById = async (propertyId) => {
         console.error(`Error fetching property ${propertyId}:`, error);
         throw error;
     }   
+}
+
+export const saveProperty = async (propertyId) => {
+    try {
+        const response = await axios.post(`${BASE_URL}/api/users/save/${propertyId}`, {}, getAuthConfig());
+        console.log('[DEBUG] saveProperty response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[DEBUG] Error saving property:', error);
+        throw error;
+    }
+}
+
+export const createInquiry = async (inquiryData) => {
+    try {
+        const response = await axios.post(`${BASE_URL}/api/inquiries`, inquiryData, getAuthConfig());
+        console.log('[DEBUG] createInquiry response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[DEBUG] Error creating inquiry:', error);
+        throw error;
+    }
+}
+
+export const getOwnerInquiries = async () => {
+    try {
+        const response = await axios.get(`${BASE_URL}/api/inquiries/owner`, getAuthConfig());
+        console.log('[DEBUG] getOwnerInquiries response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[DEBUG] Error fetching owner inquiries:', error);
+        throw error;
+    }
 }

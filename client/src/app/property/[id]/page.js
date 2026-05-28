@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cache } from "react";
+import InquiryForm from "./InquiryForm";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -306,6 +307,8 @@ export default async function PropertyDetailPage({ params }) {
             </div>
 
             <aside className="space-y-6">
+              <InquiryForm propertyId={String(property?._id || id)} />
+
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-bold">Owner</h2>
                 <div className="mt-4 space-y-2 text-sm text-slate-600">

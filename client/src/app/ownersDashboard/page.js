@@ -1,7 +1,8 @@
 "use client";
 import Head from "next/head";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getOwnerInquiries } from "../api";
 
 const tenants = [
   {
@@ -77,15 +78,100 @@ const navItems = [
 export default function OwnerDashboard() {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [inquirySearch, setInquirySearch] = useState("");
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [inquiries, setInquiries] = useState([]);
+  const [inquiryLoading, setInquiryLoading] = useState(true);
+  const [inquiryError, setInquiryError] = useState("");
+  const [seenInquiryIds, setSeenInquiryIds] = useState([]);
 
   const filtered = tenants.filter(
     (t) =>
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.property.toLowerCase().includes(search.toLowerCase())
   );
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadInquiries = async () => {
+      try {
+        setInquiryLoading(true);
+        setInquiryError("");
+        const response = await getOwnerInquiries();
+        const list = Array.isArray(response?.inquiries) ? response.inquiries : [];
+        if (mounted) setInquiries(list);
+      } catch (error) {
+        if (mounted) {
+          setInquiryError("Unable to load owner inquiries.");
+          setInquiries([]);
+        }
+      } finally {
+        if (mounted) setInquiryLoading(false);
+      }
+    };
+
+    loadInquiries();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const stored = typeof window !== "undefined" ? localStorage.getItem("owner_seen_inquiry_ids") : null;
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        setSeenInquiryIds(parsed);
+      }
+    } catch {
+      // ignore invalid localStorage data
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("owner_seen_inquiry_ids", JSON.stringify(seenInquiryIds));
+  }, [seenInquiryIds]);
+
+  const filteredInquiries = useMemo(() => {
+    const q = inquirySearch.toLowerCase();
+    return inquiries.filter((item) => {
+      if (!q) return true;
+      const name = String(item?.name || "").toLowerCase();
+      const propertyName = String(item?.property?.name || "").toLowerCase();
+      const phone = String(item?.phone || "").toLowerCase();
+      return name.includes(q) || propertyName.includes(q) || phone.includes(q);
+    });
+  }, [inquiries, inquirySearch]);
+
+  const isSeen = (item) => item?.status === "seen" || seenInquiryIds.includes(item?._id);
+
+  const unseenCount = inquiries.reduce((count, item) => (isSeen(item) ? count : count + 1), 0);
+
+  const markInquirySeen = (id) => {
+    if (!id) return;
+    setSeenInquiryIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const markAllInquiriesSeen = () => {
+    const allIds = inquiries.map((item) => item?._id).filter(Boolean);
+    setSeenInquiryIds((prev) => Array.from(new Set([...prev, ...allIds])));
+  };
+
+  const formatDate = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   return (
     <>
@@ -255,7 +341,7 @@ export default function OwnerDashboard() {
               <div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">Welcome back, Rajesh.</h1>
                 <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-                  Your properties are currently at <strong className="text-slate-700">88% occupancy</strong>. You have <strong className="text-slate-700">4 new booking requests</strong> for review.
+                  Your properties are currently at <strong className="text-slate-700">88% occupancy</strong>. You have <strong className="text-slate-700">{inquiries.length} inquiries</strong> awaiting review.
                 </p>
               </div>
               <div className="flex grid grid-cols-1 min-[425px]:grid-cols-2 gap-2.5 shrink-0">
@@ -335,6 +421,109 @@ export default function OwnerDashboard() {
                   <span className="text-xs text-slate-400 ml-1 font-medium">+13</span>
                 </div>
               </div>
+            </div>
+
+            {/* ── TENANT MANAGEMENT ── */}
+            <div className="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
+              <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">Owner Inquiries</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Separate section for all inquiry requests</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">Total: {inquiries.length}</span>
+                    <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full">
+                      Unseen: {unseenCount}
+                    </span>
+                    <button
+                      onClick={markAllInquiriesSeen}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                    >
+                      Mark all seen
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative max-w-sm">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search inquiries..."
+                    value={inquirySearch}
+                    onChange={(e) => setInquirySearch(e.target.value)}
+                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full"
+                  />
+                </div>
+              </div>
+
+              {inquiryLoading && (
+                <div className="px-5 sm:px-6 py-5 text-sm text-slate-500">Loading inquiries...</div>
+              )}
+
+              {!inquiryLoading && inquiryError && (
+                <div className="px-5 sm:px-6 py-5 text-sm text-red-500">{inquiryError}</div>
+              )}
+
+              {!inquiryLoading && !inquiryError && filteredInquiries.length === 0 && (
+                <div className="px-5 sm:px-6 py-5 text-sm text-slate-500">No inquiries found.</div>
+              )}
+
+              {!inquiryLoading && !inquiryError && filteredInquiries.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-100">
+                        {[
+                          "Name",
+                          "Property",
+                          "Phone",
+                          "Move-in",
+                          "Message",
+                          "Seen",
+                          "Status",
+                          "Created",
+                        ].map((h) => (
+                          <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-6 py-3">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {filteredInquiries.map((item) => (
+                        <tr key={item._id} className={`hover:bg-slate-50/70 transition-colors ${isSeen(item) ? "" : "bg-amber-50/30"}`}>
+                          <td className="px-6 py-4 text-sm font-semibold text-slate-900">{item?.name || "-"}</td>
+                          <td className="px-6 py-4 text-sm text-slate-700">{item?.property?.name || "-"}</td>
+                          <td className="px-6 py-4 text-sm text-slate-700">{item?.phone || "-"}</td>
+                          <td className="px-6 py-4 text-sm text-slate-700">{formatDate(item?.moveIn)}</td>
+                          <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">{item?.message || "-"}</td>
+                          <td className="px-6 py-4">
+                            {isSeen(item) ? (
+                              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">
+                                Seen
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => markInquirySeen(item?._id)}
+                                className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                              >
+                                Mark Seen
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                              {item?.status || "new"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-500">{formatDate(item?.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* ── TENANT MANAGEMENT ── */}

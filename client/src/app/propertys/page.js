@@ -42,6 +42,13 @@ const getAmenityIconKey = (amenity) => {
   return null;
 };
 
+const getInitialBudget = (priceLabel) => {
+  if (priceLabel === "Under ₹10k") return [5000, 9999];
+  if (priceLabel === "₹10k–₹20k") return [10000, 20000];
+  if (priceLabel === "Above ₹20k") return [20001, 50000];
+  return [5000, 25000];
+};
+
 const mapProperty = (property) => {
   const room = property?.rooms?.[0] || {};
   const availableBeds = Number(property?.availableBeds ?? room?.availableBeds ?? 0);
@@ -80,14 +87,17 @@ export default function SearchResults() {
   const qGender = searchParams.get("gender") || "Any Gender";
 
   // Filter state
-  const [budgetMin, setBudgetMin] = useState(5000);
-  const [budgetMax, setBudgetMax] = useState(25000);
+  const [budgetMin, setBudgetMin] = useState(() => getInitialBudget(qPrice)[0]);
+  const [budgetMax, setBudgetMax] = useState(() => getInitialBudget(qPrice)[1]);
   const [roomTypes, setRoomTypes] = useState(["Double"]);
   const [amenities, setAmenities] = useState(["AC"]);
-  const [gender, setGender] = useState("Any");
+  const [gender, setGender] = useState(() => {
+    if (qGender === "Any Gender") return "Any";
+    return qGender;
+  });
   const [moveIn, setMoveIn] = useState("");
   const [sort, setSort] = useState("Price: Low to High");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(qLocation);
   const [wishlist, setWishlist] = useState([2]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);

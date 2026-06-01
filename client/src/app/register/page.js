@@ -96,8 +96,20 @@ export default function Register() {
       setSubmitted(true);
       setTimeout(() => router.push("/signin"), 2000);
     } catch (err) {
-      console.error('Registration error:', err);
-      setErrors(prev => ({ ...prev, submit: err?.response?.data?.message || err.message || 'Registration failed' }));
+      console.error('Registration error:', { status: err?.status, data: err?.data, message: err?.message });
+
+      // If server returned field-level validation errors, merge them into `errors`
+      if (err?.data && typeof err.data === 'object') {
+        // Common API shape: { message: '...', errors: { field: 'msg' } }
+        const serverErrors = err.data.errors || err.data.fieldErrors || null;
+        if (serverErrors && typeof serverErrors === 'object') {
+          setErrors(prev => ({ ...prev, ...serverErrors }));
+        } else {
+          setErrors(prev => ({ ...prev, submit: err.message || err.data.message || 'Registration failed' }));
+        }
+      } else {
+        setErrors(prev => ({ ...prev, submit: err?.message || 'Registration failed' }));
+      }
     } finally {
       setLoading(false);
     }
@@ -201,6 +213,11 @@ export default function Register() {
 
               <form onSubmit={handleSubmit}>
                 <div className={`px-7 sm:px-9 ${step === 0 ? "pt-5" : "pt-7"} pb-7`}>
+                  {errors.submit && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-medium px-4 py-2.5 rounded-xl mb-4">
+                      {errors.submit}
+                    </div>
+                  )}
 
                   {/* ── STEP 0: Account ── */}
                   {step === 0 && (

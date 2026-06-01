@@ -14,6 +14,7 @@ const AMENITY_ICONS = {
 };
 
 const SORT_OPTIONS = ["Price: Low to High", "Price: High to Low", "Rating", "Distance", "Newest"];
+const ITEMS_PER_PAGE = 8;
 
 const AMENITY_ICON_MAP = {
   wifi: "wifi",
@@ -82,15 +83,17 @@ export default function SearchResults() {
   const searchParams = useSearchParams();
 
   // URL query params
-  const qLocation = searchParams.get("location") || "Koramangala";
+  const qLocation = searchParams.get("location") || "";
   const qPrice = searchParams.get("price") || "Any Price";
   const qGender = searchParams.get("gender") || "Any Gender";
+  const initialBudgetFilterActive = qPrice !== "Any Price";
 
   // Filter state
-  const [budgetMin, setBudgetMin] = useState(() => getInitialBudget(qPrice)[0]);
-  const [budgetMax, setBudgetMax] = useState(() => getInitialBudget(qPrice)[1]);
-  const [roomTypes, setRoomTypes] = useState(["Double"]);
-  const [amenities, setAmenities] = useState(["AC"]);
+  const [budgetMin, setBudgetMin] = useState(() => (initialBudgetFilterActive ? getInitialBudget(qPrice)[0] : 0));
+  const [budgetMax, setBudgetMax] = useState(() => (initialBudgetFilterActive ? getInitialBudget(qPrice)[1] : 50000));
+  const [budgetActive, setBudgetActive] = useState(initialBudgetFilterActive);
+  const [roomTypes, setRoomTypes] = useState([]);
+  const [amenities, setAmenities] = useState([]);
   const [gender, setGender] = useState(() => {
     if (qGender === "Any Gender") return "Any";
     return qGender;
@@ -150,7 +153,7 @@ export default function SearchResults() {
   // Apply filters
   const filtered = properties
     .filter((p) => {
-      if (p.price < budgetMin || p.price > budgetMax) return false;
+      if (budgetActive && (p.price < budgetMin || p.price > budgetMax)) return false;
       if (roomTypes.length > 0 && !roomTypes.includes(p.roomType)) return false;
       if (gender !== "Any" && p.gender !== "Co-ed" && p.gender !== gender) return false;
       const searchValue = search.toLowerCase();
@@ -163,6 +166,35 @@ export default function SearchResults() {
       if (sort === "Rating") return (b.rating || 0) - (a.rating || 0);
       return 0;
     });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
+  const paginated = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const buildPageButtons = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const pages = [1];
+    const left = Math.max(2, safePage - 1);
+    const right = Math.min(totalPages - 1, safePage + 1);
+
+    if (left > 2) pages.push("...");
+    for (let current = left; current <= right; current += 1) {
+      pages.push(current);
+    }
+    if (right < totalPages - 1) pages.push("...");
+    pages.push(totalPages);
+    return pages;
+  };
 
   const FilterSidebar = () => (
     <div className="w-full space-y-6">
@@ -181,11 +213,11 @@ export default function SearchResults() {
           <span>₹{budgetMin.toLocaleString("en-IN")}</span>
           <span>₹{budgetMax.toLocaleString("en-IN")}+</span>
         </div>
-        <input type="range" min={5000} max={25000} step={500} value={budgetMin}
-          onChange={(e) => setBudgetMin(Number(e.target.value))}
+        <input type="range" min={0} max={25000} step={500} value={budgetMin}
+          onChange={(e) => { setBudgetActive(true); setBudgetMin(Number(e.target.value)); }}
           className="w-full accent-blue-600 cursor-pointer" />
-        <input type="range" min={5000} max={25000} step={500} value={budgetMax}
-          onChange={(e) => setBudgetMax(Number(e.target.value))}
+        <input type="range" min={0} max={50000} step={500} value={budgetMax}
+          onChange={(e) => { setBudgetActive(true); setBudgetMax(Number(e.target.value)); }}
           className="w-full accent-blue-600 cursor-pointer mt-1" />
       </div>
 
@@ -410,7 +442,7 @@ export default function SearchResults() {
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                  Found {filtered.length} PGs in {qLocation || "Koramangala"}
+                  Found {filtered.length} PGs in {qLocation}
                 </h1>
                 <p className="text-sm text-slate-500 mt-1">Curated living spaces for the modern student.</p>
               </div>
@@ -446,7 +478,7 @@ export default function SearchResults() {
 
             {!loading && !error && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-              {filtered.map((p) => (
+              {paginated.map((p) => (
                 <div key={p.id} className="pg-card bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                   onClick={() => router.push(`/property/${p.id}`)}>
 
@@ -550,7 +582,7 @@ export default function SearchResults() {
                 </svg>
                 <p className="text-lg font-bold text-slate-400">No PGs match your filters</p>
                 <p className="text-sm text-slate-400 mt-1">Try adjusting your budget or room type.</p>
-                <button onClick={() => { setRoomTypes([]); setBudgetMin(5000); setBudgetMax(25000); setGender("Any"); }}
+                <button onClick={() => { setRoomTypes([]); setAmenities([]); setBudgetActive(false); setBudgetMin(0); setBudgetMax(50000); setGender("Any"); setSearch(""); setPage(1); }}
                   className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer">
                   Clear all filters
                 </button>
@@ -560,24 +592,49 @@ export default function SearchResults() {
             {/* ── LOAD MORE ── */}
             {!loading && !error && filtered.length > 0 && (
               <div className="flex flex-col items-center mt-10 gap-6">
-                <button className="flex items-center gap-2 border border-slate-200 bg-white hover:border-blue-300 hover:text-blue-600 text-slate-700 text-sm font-semibold px-8 py-3 rounded-full transition-all cursor-pointer shadow-sm hover:shadow">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="6 9 12 15 18 9"/>
-                  </svg>
-                  Load More Spaces
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={safePage === 1}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                    Prev
+                  </button>
 
-                {/* Pagination */}
-                <div className="flex items-center gap-1.5">
-                  {[1, 2, 3, "...", 12].map((p, i) => (
-                    <button key={i}
-                      onClick={() => typeof p === "number" && setPage(p)}
-                      className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-semibold transition-all cursor-pointer
-                        ${p === page ? "bg-blue-600 text-white shadow" : "text-slate-500 hover:bg-slate-100"}`}>
-                      {p}
-                    </button>
-                  ))}
+                  <div className="flex items-center gap-1.5">
+                    {buildPageButtons().map((p, i) => (
+                      typeof p === "number" ? (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-semibold transition-all cursor-pointer ${p === safePage ? "bg-blue-600 text-white shadow" : "text-slate-500 hover:bg-slate-100"}`}
+                        >
+                          {p}
+                        </button>
+                      ) : (
+                        <span key={`dots-${i}`} className="px-1 text-slate-400 text-sm">...</span>
+                      )
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                    disabled={safePage === totalPages}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
                 </div>
+
+                <p className="text-xs text-slate-400">
+                  Showing {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filtered.length)} of {filtered.length} results
+                </p>
               </div>
             )}
 

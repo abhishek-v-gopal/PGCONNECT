@@ -237,7 +237,7 @@ export default async function PropertyDetailPage({ params }) {
               <div className="flex flex-col justify-between gap-6 p-6 sm:p-8">
                 <div>
                   <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest text-blue-600">
-                    <span className="rounded-full bg-blue-50 px-3 py-1">{property.status || "verified"}</span>
+                    {/* <span className="rounded-full bg-blue-50 px-3 py-1">{property.status || "verified"}</span> */}
                     {property.isVerified && <span className="rounded-full bg-green-50 px-3 py-1 text-green-700">Verified</span>}
                   </div>
                   <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">{property.name}</h1>
@@ -310,11 +310,10 @@ export default async function PropertyDetailPage({ params }) {
               <InquiryForm propertyId={String(property?._id || id)} />
 
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-bold">Owner</h2>
+                <h2 className="text-xl font-bold">Manager</h2>
                 <div className="mt-4 space-y-2 text-sm text-slate-600">
-                  <p className="font-semibold text-slate-900">{property.owner?.name || "-"}</p>
-                  <p>{property.owner?.phone || "-"}</p>
-                  <p>{property.owner?.avatar ? "Avatar available" : "No avatar provided"}</p>
+                  <p className="font-semibold text-slate-900">{property.manager?.name || "-"}</p>
+                  <p>{property.manager?.phone || "-"}</p>
                 </div>
               </div>
 

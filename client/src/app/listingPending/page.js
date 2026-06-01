@@ -2,29 +2,89 @@
 import Head from "next/head";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { getPropertyById } from "../api";
 
 export default function ListingPending() {
   const router = useRouter();
   const [listing, setListing] = useState(null);
+  const [property, setProperty] = useState(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const propertyId =
+    listing?.apiResponse?.property?._id ||
+    listing?.apiResponse?.property?.id ||
+    listing?.apiResponse?._id ||
+    listing?.apiResponse?.id ||
+    listing?.propertyId ||
+    listing?.id ||
+    null;
 
   useEffect(() => {
     const data = JSON.parse(localStorage.getItem("pg_listing") || "null");
     setListing(data);
   }, []);
 
+  useEffect(() => {
+    if (!propertyId) return;
+
+    let active = true;
+
+    const fetchStatus = async () => {
+      setCheckingStatus(true);
+      try {
+        const response = await getPropertyById(propertyId);
+        if (!active) return;
+
+        const resolvedProperty = response?.property || response || null;
+        setProperty(resolvedProperty);
+      } catch (error) {
+        if (active) {
+          console.error("Error checking property verification:", error);
+        }
+      } finally {
+        if (active) setCheckingStatus(false);
+      }
+    };
+
+    fetchStatus();
+
+    return () => {
+      active = false;
+    };
+  }, [propertyId]);
+
+  useEffect(() => {
+    const verified = Boolean(property?.isVerified || property?.status === "verified" || listing?.verified);
+    if (!verified) return;
+
+    const target = property?._id || propertyId ? `/property/${property?._id || propertyId}` : "/propertys";
+    const timer = setTimeout(() => {
+      router.replace(target);
+    }, 1600);
+
+    return () => clearTimeout(timer);
+  }, [listing?.verified, property?.isVerified, property?.status, property?._id, propertyId, router]);
+
   const submittedAt = listing?.submittedAt
     ? new Date(listing.submittedAt).toLocaleDateString("en-IN", {
         day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
       })
-    : null;
+    : property?.createdAt
+      ? new Date(property.createdAt).toLocaleDateString("en-IN", {
+          day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+        })
+      : null;
+
+  const isVerified = Boolean(property?.isVerified || property?.status === "verified" || listing?.verified);
 
   // DEV helper — simulate verification
   const simulateVerify = () => {
     const data = JSON.parse(localStorage.getItem("pg_listing") || "{}");
     data.verified = true;
     localStorage.setItem("pg_listing", JSON.stringify(data));
-    router.push("/");
+    setListing(data);
+    setProperty((prev) => (prev ? { ...prev, isVerified: true, status: "verified" } : prev));
   };
 
   const clearAndRelist = () => {
@@ -103,44 +163,63 @@ export default function ListingPending() {
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
 
               {/* Amber top bar */}
-              <div className="bg-amber-400 h-1.5 w-full" />
+              <div className={`${isVerified ? "bg-green-500" : "bg-amber-400"} h-1.5 w-full`} />
 
               <div className="p-6 sm:p-8">
                 <div className="text-center mb-6">
-                  <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-4">
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    Pending Verification
-                  </span>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Your listing is under review</h1>
-                  <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-                    Our team is reviewing your property. We'll verify and publish it within <strong className="text-slate-700">48 hours</strong>.
-                  </p>
+                  {isVerified ? (
+                    <>
+                      <span className="inline-flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-4">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Verified Property
+                      </span>
+                      <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Your property is verified</h1>
+                      <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+                        We’re taking you to the property page now.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-4">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        Pending Verification
+                      </span>
+                      <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Your listing is under review</h1>
+                      <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+                        Our team is reviewing your property. We'll verify and publish it within <strong className="text-slate-700">48 hours</strong>.
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 {/* Listing summary */}
-                {listing && (
+                {(listing || property) && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 space-y-3">
                     <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Your Submission</p>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-900 truncate">{listing.propertyName}</p>
+                        <p className="font-semibold text-slate-900 truncate">{property?.name || listing?.propertyName}</p>
                         <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                           <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                           </svg>
-                          {listing.location}
+                          {property
+                            ? [property.location?.address, property.location?.city, property.location?.landmark].filter(Boolean).join(", ")
+                            : listing.location}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-blue-600 text-sm">₹{Number(listing.pricePerBed).toLocaleString("en-IN")}/bed</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{listing.totalBeds} beds</p>
+                        <p className="font-bold text-blue-600 text-sm">₹{Number(property?.startingPrice || listing?.pricePerBed || 0).toLocaleString("en-IN")}/bed</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{property?.totalBeds || listing?.totalBeds || 0} beds</p>
                       </div>
                     </div>
-                    {listing.amenities?.length > 0 && (
+                    {((property?.amenities?.length > 0) || listing?.amenities?.length > 0) && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {listing.amenities.map((a) => (
+                        {(property?.amenities || listing?.amenities || []).map((a) => (
                           <span key={a} className="bg-blue-50 text-blue-600 text-[10px] font-semibold px-2 py-0.5 rounded-md">{a}</span>
                         ))}
                       </div>
@@ -202,16 +281,16 @@ export default function ListingPending() {
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
-                    onClick={() => router.push("/")}
+                    onClick={() => router.push(isVerified && propertyId ? `/property/${propertyId}` : "/")}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
                   >
-                    Browse Properties
+                    {isVerified && propertyId ? "View Property" : "Browse Properties"}
                   </button>
                   <button
                     onClick={clearAndRelist}
                     className="flex-1 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
                   >
-                    Edit Submission
+                    {isVerified ? "Create New Listing" : "Edit Submission"}
                   </button>
                 </div>
 
@@ -219,11 +298,11 @@ export default function ListingPending() {
                 <div className="mt-5 pt-5 border-t border-slate-100">
                   <p className="text-[10px] text-slate-300 uppercase tracking-widest text-center mb-2">Dev Tools</p>
                   <button
-                    onClick={simulateVerify}
-                    className="w-full border border-dashed border-slate-200 text-slate-400 hover:text-green-600 hover:border-green-300 text-xs font-medium py-2 rounded-xl transition-all cursor-pointer"
-                  >
-                    Simulate Verification ✓ (dev only)
-                  </button>
+                      onClick={simulateVerify}
+                      className="w-full border border-dashed border-slate-200 text-slate-400 hover:text-green-600 hover:border-green-300 text-xs font-medium py-2 rounded-xl transition-all cursor-pointer"
+                    >
+                      Simulate Verification ✓ (dev only)
+                    </button>
                 </div>
 
               </div>

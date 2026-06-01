@@ -1,72 +1,142 @@
 "use client";
 import Head from "next/head";
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
+import { useState } from "react";
+import { createProperty } from "../api";
 
 const AMENITIES = ["Wi-Fi", "AC", "Laundry", "Kitchen", "Security", "Gym"];
+const ROOM_TYPES = ["Default", "Single", "Double", "Triple", "More than 3"];
 
 export default function ListProperty() {
   const router = useRouter();
-  const fileInputRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const [form, setForm] = useState({
-    propertyName: "",
-    location: "",
-    pricePerBed: "",
-    totalBeds: "",
+    name: "",
+    tagline: "",
+    address: "",
+    city: "",
+    landmark: "",
     amenities: [],
-    images: [],
+    gender: "Boys",
+    managerName: "",
+    managerPhone: "",
   });
 
-  const [imagePreviews, setImagePreviews] = useState([]);
+  const [rooms, setRooms] = useState([
+    {
+      type: "Default",
+      price: "",
+      totalBeds: "",
+      availableBeds: "",
+      description: "",
+    },
+  ]);
 
-  const toggleAmenity = (a) => {
+  const updateField = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const toggleAmenity = (amenity) => {
     setForm((prev) => ({
       ...prev,
-      amenities: prev.amenities.includes(a)
-        ? prev.amenities.filter((x) => x !== a)
-        : [...prev.amenities, a],
+      amenities: prev.amenities.includes(amenity)
+        ? prev.amenities.filter((item) => item !== amenity)
+        : [...prev.amenities, amenity],
     }));
   };
 
-  const handleFiles = (files) => {
-    const valid = Array.from(files).filter((f) => f.size <= 5 * 1024 * 1024);
-    valid.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreviews((prev) => [...prev, e.target.result]);
-      };
-      reader.readAsDataURL(file);
-    });
-    setForm((prev) => ({ ...prev, images: [...prev.images, ...valid] }));
+  const updateRoom = (index, field, value) => {
+    setRooms((prev) => prev.map((room, roomIndex) => (
+      roomIndex === index ? { ...room, [field]: value } : room
+    )));
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    handleFiles(e.dataTransfer.files);
+  const addRoom = () => {
+    setRooms((prev) => ([
+      ...prev,
+      {
+        type: "Default",
+        price: "",
+        totalBeds: "",
+        availableBeds: "",
+        description: "",
+      },
+    ]));
   };
 
-  const handleSubmit = (e) => {
+  const removeRoom = (index) => {
+    setRooms((prev) => prev.filter((_, roomIndex) => roomIndex !== index));
+  };
+
+  const buildPropertyPayload = () => ({
+    name: form.name.trim(),
+    tagline: form.tagline.trim(),
+    location: {
+      address: form.address.trim(),
+      city: form.city.trim(),
+      landmark: form.landmark.trim(),
+    },
+    amenities: form.amenities,
+    rooms: rooms.map((room) => ({
+      type: room.type.trim(),
+      price: Number(room.price),
+      totalBeds: Number(room.totalBeds),
+      availableBeds: Number(room.availableBeds || room.totalBeds),
+      description: room.description.trim(),
+    })),
+    gender: form.gender,
+    manager: {
+      name: form.managerName.trim(),
+      phone: form.managerPhone.trim(),
+    },
+  });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.propertyName || !form.location || !form.pricePerBed || !form.totalBeds) return;
+
+    const hasInvalidRoom = rooms.some((room) => !room.price || !room.totalBeds);
+
+    if (!form.name || !form.address || !form.city || !form.managerName || rooms.length === 0 || hasInvalidRoom) {
+      setSubmitError("Please fill in the required fields.");
+      return;
+    }
+
+    setSubmitError("");
     setSubmitting(true);
-    setTimeout(() => {
-      // Save listing to localStorage with verified: false
+
+    try {
+      const payload = buildPropertyPayload();
+      const response = await createProperty(payload);
+
       const listing = {
-        ...form,
-        images: imagePreviews,
+        propertyName: form.name,
+        location: `${form.address}, ${form.city}${form.landmark ? ` (${form.landmark})` : ""}`,
+        pricePerBed: form.roomPrice,
+        totalBeds: rooms[0]?.totalBeds || "",
+        amenities: form.amenities,
+        images: [],
         verified: false,
         submittedAt: new Date().toISOString(),
+        apiResponse: response,
       };
+
       localStorage.setItem("pg_listing", JSON.stringify(listing));
-      setSubmitting(false);
       setSubmitted(true);
-      // Redirect to pending page after a moment
       setTimeout(() => router.push("/listingPending"), 1500);
-    }, 1200);
+    } catch (error) {
+      console.error("Error creating property:", {
+        status: error?.status,
+        data: error?.data,
+        message: error?.message,
+      });
+      setSubmitError(error?.message || "Failed to create property.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -81,8 +151,6 @@ export default function ListProperty() {
       </Head>
 
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-
-        {/* Nav */}
         <nav className="sticky top-0 z-50 bg-white border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 h-14 sm:h-16 flex items-center justify-between gap-4">
             <button onClick={() => router.push("/")} className="font-serif-display text-blue-600 text-lg sm:text-xl shrink-0 cursor-pointer">PG Connect</button>
@@ -109,214 +177,279 @@ export default function ListProperty() {
           )}
         </nav>
 
-        {/* Hero */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-10 sm:pt-14 pb-4">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 tracking-tight">List Your Property</h1>
           <p className="mt-3 text-slate-500 text-sm sm:text-base max-w-lg leading-relaxed">
-            Join the PG Connect ecosystem. Provide your property details to start attracting quality student residents.
+            Create a new property listing that matches the API payload for <span className="font-semibold text-slate-700">/api/properties</span>.
           </p>
         </div>
 
-        {/* Form card */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 w-full flex-1 flex items-start justify-center">
-          <div className="max-w-2xl">
-            <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="max-w-3xl w-full">
+            <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-8">
+              {submitError && (
+                <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-medium px-4 py-2.5 rounded-xl">
+                  {submitError}
+                </div>
+              )}
 
-              {/* Property Name */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Property Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Skyline Student Residences"
-                  value={form.propertyName}
-                  onChange={(e) => setForm({ ...form, propertyName: e.target.value })}
-                  required
-                  className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
-                />
-              </div>
-
-              {/* Location */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Location</label>
-                <div className="relative">
-                  <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
-                  </svg>
+              <section className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Property Name</label>
                   <input
                     type="text"
-                    placeholder="Street name, City, Landmark"
-                    value={form.location}
-                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    placeholder="Nirmal Jyothi"
+                    value={form.name}
+                    onChange={(e) => updateField("name", e.target.value)}
                     required
-                    className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                    className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
                   />
                 </div>
-              </div>
 
-              {/* Price + Beds */}
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Price Per Bed</label>
-                  <div className="relative">
-                    <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
-                    </svg>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Tagline</label>
+                  <input
+                    type="text"
+                    placeholder="Modern co-living in Koramangala"
+                    value={form.tagline}
+                    onChange={(e) => updateField("tagline", e.target.value)}
+                    className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Address</label>
                     <input
-                      type="number"
-                      placeholder="0.00"
-                      value={form.pricePerBed}
-                      onChange={(e) => setForm({ ...form, pricePerBed: e.target.value })}
+                      type="text"
+                      placeholder="5th Block"
+                      value={form.address}
+                      onChange={(e) => updateField("address", e.target.value)}
                       required
-                      min="0"
-                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">City</label>
+                    <input
+                      type="text"
+                      placeholder="Chanaganassery"
+                      value={form.city}
+                      onChange={(e) => updateField("city", e.target.value)}
+                      required
+                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
                     />
                   </div>
                 </div>
+
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Total Beds Available</label>
-                  <div className="relative">
-                    <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10" /><path d="M2 14h20" />
-                    </svg>
-                    <input
-                      type="number"
-                      placeholder="Total count"
-                      value={form.totalBeds}
-                      onChange={(e) => setForm({ ...form, totalBeds: e.target.value })}
-                      required
-                      min="1"
-                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
-                    />
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Landmark</label>
+                  <input
+                    type="text"
+                    placeholder="Near Forum Mall"
+                    value={form.landmark}
+                    onChange={(e) => updateField("landmark", e.target.value)}
+                    className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                  />
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Gender</label>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {["Boys", "Girls", "Co-ed"].map((option) => {
+                      const active = form.gender === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => updateField("gender", option)}
+                          className={`rounded-xl border px-4 py-3 text-sm font-medium transition-all text-left ${active ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
 
-              {/* Amenities */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Key Amenities</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {AMENITIES.map((a) => {
-                    const checked = form.amenities.includes(a);
-                    return (
-                      <button
-                        key={a}
-                        type="button"
-                        onClick={() => toggleAmenity(a)}
-                        className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-left transition-all cursor-pointer
-                          ${checked ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`}
-                      >
-                        <div className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-all
-                          ${checked ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
-                          {checked && (
-                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="2 6 5 9 10 3" />
-                            </svg>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Amenities</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {AMENITIES.map((amenity) => {
+                      const checked = form.amenities.includes(amenity);
+                      return (
+                        <button
+                          key={amenity}
+                          type="button"
+                          onClick={() => toggleAmenity(amenity)}
+                          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-left transition-all cursor-pointer ${checked ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`}
+                        >
+                          <div className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-all ${checked ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
+                            {checked && (
+                              <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="2 6 5 9 10 3" />
+                              </svg>
+                            )}
+                          </div>
+                          {amenity}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Room Details</label>
+                  <div className="space-y-4">
+                    {rooms.map((room, index) => (
+                      <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5 space-y-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">Room {index + 1}</p>
+                            <p className="text-xs text-slate-500">Add pricing and capacity for this room type.</p>
+                          </div>
+                          {rooms.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeRoom(index)}
+                              className="text-xs font-semibold text-rose-600 hover:text-rose-700"
+                            >
+                              Remove
+                            </button>
                           )}
                         </div>
-                        {a}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
-              {/* Property Images */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Property Images</label>
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-300 hover:border-blue-400 rounded-xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors bg-slate-50 hover:bg-blue-50/30"
-                >
-                  <svg className="w-10 h-10 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="16 16 12 12 8 16" />
-                    <line x1="12" y1="12" x2="12" y2="21" />
-                    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-                  </svg>
-                  <p className="text-sm font-semibold text-slate-700">Click to upload or drag and drop</p>
-                  <p className="text-xs text-slate-400">High-res JPG or PNG (Max 5MB per image)</p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleFiles(e.target.files)}
-                  />
-                </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Room Type</label>
+                            <select
+                              value={room.type}
+                              onChange={(e) => updateRoom(index, "type", e.target.value)}
+                              className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition-all"
+                            >
+                              {ROOM_TYPES.map((type) => (
+                                <option key={type} value={type}>{type}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Price</label>
+                            <input
+                              type="number"
+                              placeholder="15000"
+                              value={room.price}
+                              onChange={(e) => updateRoom(index, "price", e.target.value)}
+                              min="0"
+                              required
+                              className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Total Beds</label>
+                            <input
+                              type="number"
+                              placeholder="10"
+                              value={room.totalBeds}
+                              onChange={(e) => updateRoom(index, "totalBeds", e.target.value)}
+                              min="1"
+                              required
+                              className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Available Beds</label>
+                            <input
+                              type="number"
+                              placeholder="4"
+                              value={room.availableBeds}
+                              onChange={(e) => updateRoom(index, "availableBeds", e.target.value)}
+                              min="0"
+                              className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                            />
+                          </div>
+                        </div>
 
-                {/* Previews */}
-                {imagePreviews.length > 0 && (
-                  <div className="flex flex-wrap gap-3 mt-4">
-                    {imagePreviews.map((src, i) => (
-                      <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-                        <img src={src} alt="" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setImagePreviews((p) => p.filter((_, j) => j !== i));
-                            setForm((prev) => ({ ...prev, images: prev.images.filter((_, j) => j !== i) }));
-                          }}
-                          className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center cursor-pointer hover:bg-black/80 transition-colors"
-                        >
-                          <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
+                        <div>
+                          <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Description</label>
+                          <textarea
+                            rows={3}
+                            placeholder={index === 0 ? "Twin beds" : "Add room details"}
+                            value={room.description}
+                            onChange={(e) => updateRoom(index, "description", e.target.value)}
+                            className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all resize-none"
+                          />
+                        </div>
                       </div>
                     ))}
-                    {/* Empty placeholders */}
-                    {imagePreviews.length < 2 && Array.from({ length: 2 - imagePreviews.length }).map((_, i) => (
-                      <div key={`ph-${i}`} className="w-20 h-20 rounded-xl bg-slate-100 border border-slate-200" />
-                    ))}
                   </div>
-                )}
-                {imagePreviews.length === 0 && (
-                  <div className="flex gap-3 mt-4">
-                    <div className="w-20 h-20 rounded-xl bg-slate-100 border border-slate-200" />
-                    <div className="w-20 h-20 rounded-xl bg-slate-100 border border-slate-200" />
-                  </div>
-                )}
-              </div>
 
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={submitting || submitted}
-                className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all text-white font-bold text-sm py-3.5 rounded-xl cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  <button
+                    type="button"
+                    onClick={addRoom}
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-blue-400 hover:text-blue-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 5v14" />
+                      <path d="M5 12h14" />
                     </svg>
-                    Submitting…
-                  </>
-                ) : submitted ? "✓ Submitted!" : "Submit Property Listing"}
-              </button>
-            </form>
+                    Add room
+                  </button>
+                </div>
 
-            {/* Verify CTA */}
-            <div className="mt-5 bg-green-50 border border-green-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-bold text-green-800">Verify Your Listing</p>
-                <p className="text-xs text-green-700 mt-1 leading-relaxed max-w-sm">
-                  Properties with verified badges receive 4× more inquiries. Our team will visit your location within 48 hours of submission.
-                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Manager Name</label>
+                    <input
+                      type="text"
+                      placeholder="Rajesh Kumar"
+                      value={form.managerName}
+                      onChange={(e) => updateField("managerName", e.target.value)}
+                      required
+                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Manager Phone</label>
+                    <input
+                      type="tel"
+                      placeholder="+91 9876543210"
+                      value={form.managerPhone}
+                      onChange={(e) => updateField("managerPhone", e.target.value)}
+                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Ready to create this property?</p>
+                  <p className="text-xs text-slate-500 mt-0.5">This will post a new record to the properties API and keep the pending flow working.</p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting || submitted}
+                  className="shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all text-white font-bold text-sm px-5 py-3 rounded-xl cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      Creating…
+                    </>
+                  ) : submitted ? "✓ Submitted" : "Create Property"}
+                </button>
               </div>
-              <button className="shrink-0 flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white text-xs font-bold px-4 py-2.5 rounded-full transition-all cursor-pointer whitespace-nowrap">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-                Fast-Track
-              </button>
-            </div>
+            </form>
           </div>
         </main>
 
-        {/* Footer */}
         <footer className="bg-white border-t border-slate-200 mt-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -324,8 +457,8 @@ export default function ListProperty() {
               <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
             </div>
             <div className="flex flex-wrap gap-5">
-              {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((l) => (
-                <a key={l} href="#" className="text-xs text-slate-500 hover:text-blue-600 transition-colors">{l}</a>
+              {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((label) => (
+                <a key={label} href="#" className="text-xs text-slate-500 hover:text-blue-600 transition-colors">{label}</a>
               ))}
             </div>
           </div>

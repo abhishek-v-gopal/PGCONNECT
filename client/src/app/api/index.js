@@ -30,6 +30,17 @@ const getAuthConfig = () => ({
     headers: getAuthHeaders(),
 });
 
+// Normalize axios errors into a consistent Error with `status` and `data`
+const parseAxiosError = (error) => {
+    const status = error?.response?.status;
+    const data = error?.response?.data;
+    const message = data?.message || error?.message || 'Request failed';
+    const e = new Error(message);
+    e.status = status;
+    e.data = data;
+    return e;
+};
+
 
 
 //login
@@ -60,8 +71,12 @@ export const userRegister = async (userData) => {
         console.log('Registration successful:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Error during registration:', error);
-        throw error;
+        console.error('Error during registration:', {
+            status: error?.response?.status,
+            data: error?.response?.data,
+            message: error?.message,
+        });
+        throw parseAxiosError(error);
     }
 }
 //logout
@@ -139,6 +154,17 @@ export const createInquiry = async (inquiryData) => {
     } catch (error) {
         console.error('[DEBUG] Error creating inquiry:', error);
         throw error;
+    }
+}
+
+export const createProperty = async (propertyData) => {
+    try {
+        const response = await axios.post(`${BASE_URL}/api/properties`, propertyData, getAuthConfig());
+        console.log('[DEBUG] createProperty response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[DEBUG] Error creating property:', error);
+        throw parseAxiosError(error);
     }
 }
 

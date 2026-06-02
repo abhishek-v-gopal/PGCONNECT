@@ -190,7 +190,7 @@ exports.createInquiry = async (req, res, next) => {
 
     const inquiry = await Inquiry.create({
       property: propertyId,
-      name, phone, moveIn, message,
+      name, phone, moveIn, message, status: "new",
       user: req.user?._id,
     });
 
@@ -201,6 +201,20 @@ exports.createInquiry = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+exports.updateInquiry = async (req, res, next) => {
+  try {    const { status, responseMessage } = req.body;
+    const inquiry = await Inquiry.findById(req.params.id);
+    if (!inquiry) return res.status(404).json({ success: false, message: "Inquiry not found." });
+    if (status) inquiry.status = status;
+    if (responseMessage) inquiry.responseMessage = responseMessage;
+    await inquiry.save();
+    res.json({ success: true, message: "Inquiry updated.", inquiry });
+  }
+  catch (err) {
+    next(err);
+  } 
 };
 
 // GET /api/inquiries/owner — inquiries for the owner's properties

@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 const User = require("../models/user.model");
+const Property = require("../models/property.model");
 
 // ── Sign token + send cookie ───────────────────────────────────────────────────
 const sendToken = (user, statusCode, res) => {
@@ -73,7 +74,35 @@ exports.login = async (req, res, next) => {
     user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
 
-    sendToken(user, 200, res);
+    // ── Fetch owner properties if user is an owner ────────────────────────────
+    let responseUser = user.toJSON();
+    if (user.role === "owner") {
+      const properties = await Property.find({ owner: user._id }).select("_id name isVerified");
+      responseUser.properties = properties.map((prop) => ({
+        propertyId: prop._id,
+        propertyName: prop.name,
+        isVerified: prop.isVerified,
+      }));
+    }
+
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    });
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: Number(process.env.JWT_COOKIE_EXPIRES || 7) * 24 * 60 * 60 * 1000,
+    };
+
+    res.cookie("token", token, cookieOptions);
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: responseUser,
+    }); 
   } catch (err) {
     next(err);
   }

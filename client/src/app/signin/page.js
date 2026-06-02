@@ -27,26 +27,42 @@ export default function SignIn() {
       };
 
       console.log('[DEBUG] Attempting login with:', { email: data.email, passwordLength: data.password.length });
-      await userLogin(data);
+      const response = await userLogin(data);
 
-      // Simulate auth — check localStorage for submitted listing
+      // Store auth data
+      if (response?.token && response?.user) {
+        localStorage.setItem("auth_token", response.token);
+        localStorage.setItem("user_data", JSON.stringify(response.user));
+      }
+
+      // Role-based redirect
       setTimeout(() => {
         setLoading(false);
-        const listing = typeof window !== "undefined"
-          ? JSON.parse(localStorage.getItem("pg_listing") || "null")
-          : null;
+        const user = response?.user;
+        const role = user?.role;
 
-        if (!listing) {
-          // No listing submitted → go to listing page
-          router.push("/listProperty");
-        } else if (listing && !listing.verified) {
-          // Listing submitted but not verified → go to pending page
-          router.push("/listingPending");
+        if (role === "student") {
+          router.push("/propertys");
+        } else if (role === "owner") {
+          // Check if owner has pending verification
+          const properties =user?.properties || [];
+          const listing = JSON.parse(localStorage.getItem("pg_listing") || "null");
+          if (properties.length > 0 && !properties[0].isVerified) {
+            router.push("/listingPending");
+          } else if (user?.properties?.length > 0 && user?.properties[0]?.isVerified) {
+            // Owner has properties → go to dashboard
+            router.push("/ownersDashboard");
+          } else {
+            // No properties → go to listing page
+            router.push("/listProperty");
+          }
+        } else if (role === "admin") {
+          router.push("/adminDashboard");
         } else {
-          // Verified → go home
-          router.push("/ownersDashboard");
+          // Fallback
+          router.push("/");
         }
-      }, 1000);
+      }, 500);
     } catch (error) {
       setLoading(false);
       console.error('[DEBUG] Login error caught:', {
@@ -65,20 +81,9 @@ export default function SignIn() {
   };
 
   const handleGoogle = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      const listing = typeof window !== "undefined"
-        ? JSON.parse(localStorage.getItem("pg_listing") || "null")
-        : null;
-      if (!listing) {
-        router.push("/list-property");
-      } else if (!listing.verified) {
-        router.push("/listing-pending");
-      } else {
-        router.push("/");
-      }
-    }, 800);
+    // Google sign-in would call userLogin with OAuth token
+    // For now, show a placeholder message
+    setError("Google sign-in coming soon");
   };
 
   return (

@@ -178,3 +178,18 @@ export const getOwnerInquiries = async () => {
         throw error;
     }
 }
+
+export const updateInquiryStatus = async (inquiryId, status) => {
+    try {
+        const response = await axios.patch(
+            `${BASE_URL}/api/inquiries/${inquiryId}`,
+            { status },
+            getAuthConfig()
+        );
+        console.log('[DEBUG] updateInquiryStatus response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[DEBUG] Error updating inquiry status:', error);
+        throw error;
+    }
+}

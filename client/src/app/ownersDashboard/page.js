@@ -2,7 +2,7 @@
 import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getOwnerInquiries } from "../api";
+import { getOwnerInquiries, updateInquiryStatus } from "../api";
 
 const tenants = [
   {
@@ -86,6 +86,8 @@ export default function OwnerDashboard() {
   const [inquiryLoading, setInquiryLoading] = useState(true);
   const [inquiryError, setInquiryError] = useState("");
   const [seenInquiryIds, setSeenInquiryIds] = useState([]);
+  const [updatingInquiryId, setUpdatingInquiryId] = useState(null);
+  const [user, setUser] = useState(null);
 
   const filtered = tenants.filter(
     (t) =>
@@ -95,6 +97,9 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     let mounted = true;
+
+    console.log("OwnerDashboard mounted. User data:", user);
+    setUser(user);
 
     const loadInquiries = async () => {
       try {
@@ -120,7 +125,21 @@ export default function OwnerDashboard() {
   }, []);
 
   useEffect(() => {
+
     const stored = typeof window !== "undefined" ? localStorage.getItem("owner_seen_inquiry_ids") : null;
+    const userData = typeof window !== "undefined" ? localStorage.getItem("user_data") : null;
+
+    try {
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        console.log("parsedUser:", parsedUser);
+        
+        setUser(parsedUser);
+      }
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+    }
+
     if (!stored) return;
     try {
       const parsed = JSON.parse(stored);
@@ -160,6 +179,25 @@ export default function OwnerDashboard() {
   const markAllInquiriesSeen = () => {
     const allIds = inquiries.map((item) => item?._id).filter(Boolean);
     setSeenInquiryIds((prev) => Array.from(new Set([...prev, ...allIds])));
+  };
+
+  const handleUpdateInquiryStatus = async (inquiryId, newStatus) => {
+    try {
+      setUpdatingInquiryId(inquiryId);
+      await updateInquiryStatus(inquiryId, newStatus);
+      
+      // Update local state
+      setInquiries((prev) =>
+        prev.map((item) =>
+          item._id === inquiryId ? { ...item, status: newStatus } : item
+        )
+      );
+    } catch (error) {
+      console.error("Error updating inquiry status:", error);
+      alert(`Failed to update status: ${error?.response?.data?.message || error.message}`);
+    } finally {
+      setUpdatingInquiryId(null);
+    }
   };
 
   const formatDate = (value) => {
@@ -257,8 +295,8 @@ export default function OwnerDashboard() {
             {/* Profile */}
             <div className="flex items-center gap-2.5 cursor-pointer group">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-900 leading-tight">Rajesh Kumar</p>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Premium Owner</p>
+                <p className="text-sm font-semibold text-slate-900 leading-tight">{user?.FirstName || "Owner"}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">{user?.role || "Owner"}</p>
               </div>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
                 RK
@@ -482,7 +520,6 @@ export default function OwnerDashboard() {
                           "Phone",
                           "Move-in",
                           "Message",
-                          "Seen",
                           "Status",
                           "Created",
                         ].map((h) => (
@@ -499,20 +536,7 @@ export default function OwnerDashboard() {
                           <td className="px-6 py-4 text-sm text-slate-700">{formatDate(item?.moveIn)}</td>
                           <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">{item?.message || "-"}</td>
                           <td className="px-6 py-4">
-                            {isSeen(item) ? (
-                              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">
-                                Seen
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => markInquirySeen(item?._id)}
-                                className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
-                              >
-                                Mark Seen
-                              </button>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
+                            {/* dropdown for status update */}
                             <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                               {item?.status || "new"}
                             </span>

@@ -193,3 +193,14 @@ export const updateInquiryStatus = async (inquiryId, status) => {
         throw error;
     }
 }
+
+export const getOwnerProperties = async () => {
+    try {
+        const response = await axios.get(`${BASE_URL}/api/properties/owner/mine`, getAuthConfig());
+        console.log('[DEBUG] getOwnerProperties response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[DEBUG] Error fetching owner properties:', error);
+        throw error;
+    }   
+}

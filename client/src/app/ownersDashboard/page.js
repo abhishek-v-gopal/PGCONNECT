@@ -2,7 +2,7 @@
 import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getOwnerInquiries, updateInquiryStatus } from "../api";
+import { getOwnerInquiries, updateInquiryStatus, getOwnerProperties } from "../api";
 
 const tenants = [
   {
@@ -88,6 +88,8 @@ export default function OwnerDashboard() {
   const [seenInquiryIds, setSeenInquiryIds] = useState([]);
   const [updatingInquiryId, setUpdatingInquiryId] = useState(null);
   const [user, setUser] = useState(null);
+  const [properties, setProperties] = useState([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(true);
 
   const filtered = tenants.filter(
     (t) =>
@@ -118,7 +120,21 @@ export default function OwnerDashboard() {
       }
     };
 
+    const loadProperties = async () => {
+      try {
+        const data = await getOwnerProperties();
+        if (mounted && data.success) setProperties(data.properties || []);
+      } catch (err) {
+        console.error("Failed to load properties:", err);
+      } finally {
+        if (mounted) setPropertiesLoading(false);
+      }
+    };
+
+    loadProperties();
+
     loadInquiries();
+
     return () => {
       mounted = false;
     };
@@ -133,7 +149,7 @@ export default function OwnerDashboard() {
       if (userData) {
         const parsedUser = JSON.parse(userData);
         console.log("parsedUser:", parsedUser);
-        
+
         setUser(parsedUser);
       }
     } catch (error) {
@@ -185,7 +201,7 @@ export default function OwnerDashboard() {
     try {
       setUpdatingInquiryId(inquiryId);
       await updateInquiryStatus(inquiryId, newStatus);
-      
+
       // Update local state
       setInquiries((prev) =>
         prev.map((item) =>
@@ -210,6 +226,13 @@ export default function OwnerDashboard() {
       year: "numeric",
     });
   };
+
+  
+    // ✅ Place these BEFORE the return statement, INSIDE the component function
+    const totalBeds = properties.reduce((s, p) => s + (p.totalBeds ?? 0), 0);
+    const occupiedBeds = properties.reduce((s, p) => s + ((p.totalBeds ?? 0) - (p.availableBeds ?? 0)), 0);
+    const availableBeds = properties.reduce((s, p) => s + (p.availableBeds ?? 0), 0);
+    const occupancyPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
   return (
     <>
@@ -379,7 +402,12 @@ export default function OwnerDashboard() {
               <div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">Welcome back, Rajesh.</h1>
                 <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-                  Your properties are currently at <strong className="text-slate-700">88% occupancy</strong>. You have <strong className="text-slate-700">{inquiries.length} inquiries</strong> awaiting review.
+                  Your properties are currently at{" "}
+<strong className="text-slate-700">
+  {propertiesLoading ? "..." : `${occupancyPct}% occupancy`}
+</strong>. You have{" "}
+<strong className="text-slate-700">{inquiries.length} inquiries</strong>{" "}
+awaiting review.
                 </p>
               </div>
               <div className="flex grid grid-cols-1 min-[425px]:grid-cols-2 gap-2.5 shrink-0">
@@ -400,6 +428,7 @@ export default function OwnerDashboard() {
 
             {/* ── STAT CARDS ── */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+
               {/* Total Beds */}
               <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-2xl" />
@@ -409,13 +438,13 @@ export default function OwnerDashboard() {
                       <path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10" /><path d="M2 14h20" />
                     </svg>
                   </div>
-                  <span className="text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    ↑ +12%
+                  <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">
+                    {properties.length} PGs
                   </span>
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Total Bed Capacity</p>
-                <p className="text-4xl font-bold text-slate-900 mt-1 pl-2">124</p>
-                <p className="text-xs text-slate-400 mt-2 pl-2">Across 4 premium locations</p>
+                <p className="text-4xl font-bold text-slate-900 mt-1 pl-2"> {propertiesLoading ? "—" : totalBeds} </p>
+                <p className="text-xs text-slate-400 mt-2 pl-2"> Across {properties.length} {properties.length === 1 ? "location" : "locations"} </p>
               </div>
 
               {/* Occupied Beds */}
@@ -428,16 +457,23 @@ export default function OwnerDashboard() {
                       <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
                   </div>
+                  <span className="text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                    {propertiesLoading ? "—" : `${occupancyPct}%`}
+                  </span>
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Occupied Beds</p>
-                <p className="text-4xl font-bold text-slate-900 mt-1 pl-2">109</p>
+                <p className="text-4xl font-bold text-slate-900 mt-1 pl-2">
+                  {propertiesLoading ? "—" : occupiedBeds}
+                </p>
                 <div className="flex items-center gap-1.5 mt-2 pl-2">
                   <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-                  <p className="text-xs text-green-600 font-medium">Healthy high demand</p>
+                  <p className="text-xs text-green-600 font-medium">
+                    {propertiesLoading ? "Loading..." : occupancyPct >= 80 ? "Healthy high demand" : "Room to grow"}
+                  </p>
                 </div>
               </div>
 
-              {/* Available Soon */}
+              {/* Available Beds */}
               <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-red-400 rounded-l-2xl" />
                 <div className="flex items-start justify-between mb-4 pl-2">
@@ -447,16 +483,23 @@ export default function OwnerDashboard() {
                     </svg>
                   </div>
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Available Soon</p>
-                <p className="text-4xl font-bold text-slate-900 mt-1 pl-2">15</p>
-                {/* Avatar stack */}
-                <div className="flex items-center mt-2 pl-2 gap-1">
-                  {["bg-blue-400", "bg-purple-400", "bg-amber-400"].map((c, i) => (
-                    <div key={i} className={`w-6 h-6 rounded-full ${c} border-2 border-white flex items-center justify-center text-[8px] text-white font-bold -ml-${i > 0 ? 2 : 0}`}>
-                      {["AK", "MS", "RS"][i]}
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Available Beds</p>
+                <p className="text-4xl font-bold text-slate-900 mt-1 pl-2">
+                  {propertiesLoading ? "—" : availableBeds}
+                </p>
+                <div className="flex items-center mt-2 pl-2 gap-1 flex-wrap">
+                  {properties.slice(0, 3).map((p, i) => (
+                    <div
+                      key={p._id}
+                      title={p.name}
+                      className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[8px] text-white font-bold ${["bg-blue-400", "bg-purple-400", "bg-amber-400"][i % 3]}`}
+                    >
+                      {p.name.slice(0, 2).toUpperCase()}
                     </div>
                   ))}
-                  <span className="text-xs text-slate-400 ml-1 font-medium">+13</span>
+                  {properties.length > 3 && (
+                    <span className="text-xs text-slate-400 ml-1 font-medium">+{properties.length - 3}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -470,30 +513,20 @@ export default function OwnerDashboard() {
                     <p className="text-xs text-slate-400 mt-0.5">Separate section for all inquiry requests</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Total: {inquiries.length}</span>
-                    <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full">
-                      Unseen: {unseenCount}
-                    </span>
-                    <button
-                      onClick={markAllInquiriesSeen}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-                    >
-                      Mark all seen
-                    </button>
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Search inquiries..."
+                      value={inquirySearch}
+                      onChange={(e) => setInquirySearch(e.target.value)}
+                      className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full"
+                    />
                   </div>
                 </div>
 
                 <div className="relative max-w-sm">
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Search inquiries..."
-                    value={inquirySearch}
-                    onChange={(e) => setInquirySearch(e.target.value)}
-                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full"
-                  />
                 </div>
               </div>
 
@@ -536,10 +569,18 @@ export default function OwnerDashboard() {
                           <td className="px-6 py-4 text-sm text-slate-700">{formatDate(item?.moveIn)}</td>
                           <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">{item?.message || "-"}</td>
                           <td className="px-6 py-4">
-                            {/* dropdown for status update */}
-                            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                              {item?.status || "new"}
-                            </span>
+                            <select
+                              value={item?.status || "new"}
+                              disabled={updatingInquiryId === item._id}
+                              onChange={(e) => {
+                                markInquirySeen(item._id);
+                                handleUpdateInquiryStatus(item._id, e.target.value);
+                              }}
+                              className={`text-[11px] font-bold px-2.5 py-1 rounded-full border cursor-pointer outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 ${item?.status === "closed" ? "bg-slate-50 text-slate-600 border-slate-200 focus:ring-slate-100" : item?.status === "contacted" ? "bg-green-50 text-green-700 border-green-200 focus:ring-green-100" : item?.status === "seen" ? "bg-amber-50 text-amber-700 border-amber-200 focus:ring-amber-100" : "bg-blue-50 text-blue-700 border-blue-200 focus:ring-blue-100"}`}>
+                              <option value="new">new</option>
+                              <option value="contacted">contacted</option>
+                              <option value="closed">closed</option>
+                            </select>
                           </td>
                           <td className="px-6 py-4 text-sm text-slate-500">{formatDate(item?.createdAt)}</td>
                         </tr>

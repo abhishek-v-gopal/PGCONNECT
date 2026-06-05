@@ -204,3 +204,15 @@ export const getOwnerProperties = async () => {
         throw error;
     }   
 }
+
+
+export const verifyProperty = async (propertyId) => {
+    try {
+        const response = await axios.post(`${BASE_URL}/api/properties/${propertyId}/verify`, {}, getAuthConfig());
+        console.log('[DEBUG] verifyProperty response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[DEBUG] Error verifying property:', error);
+        throw error;
+    }
+}

@@ -1,6 +1,7 @@
+// src/controllers/property.controller.js
 const Property = require("../models/property.model");
-const User = require("../models/user.model");
 const { validationResult } = require("express-validator");
+const { deleteImages, getPublicUrl, getSignedImageUrl } = require("../config/r2.service");
 
 // ── GET /api/properties — search & filter ─────────────────────────────────────
 exports.getProperties = async (req, res, next) => {
@@ -23,23 +24,17 @@ exports.getProperties = async (req, res, next) => {
       const list = amenities.split(",").map((a) => a.trim());
       query.amenities = { $all: list };
     }
-    if (roomType) {
-      query["rooms.type"] = roomType;
-    }
-    if (search) {
-      query.$text = { $search: search };
-    }
+    if (roomType) query["rooms.type"] = roomType;
+    if (search)   query.$text = { $search: search };
 
-    // Sorting
     const sortMap = {
-      "price_asc":  { startingPrice: 1 },
-      "price_desc": { startingPrice: -1 },
-      "rating":     { rating: -1 },
-      "newest":     { createdAt: -1 },
+      price_asc:  { startingPrice: 1 },
+      price_desc: { startingPrice: -1 },
+      rating:     { rating: -1 },
+      newest:     { createdAt: -1 },
     };
     const sortBy = sortMap[sort] || { createdAt: -1 };
-
-    const skip = (Number(page) - 1) * Number(limit);
+    const skip   = (Number(page) - 1) * Number(limit);
 
     const [properties, total] = await Promise.all([
       Property.find(query)
@@ -73,7 +68,14 @@ exports.getPropertyById = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Property not found." });
     }
 
-    // Increment view counter
+    // ── CHANGED: if bucket is private, generate signed URLs on the fly ────────
+    // If R2_PUBLIC_URL is set (public bucket), images[] already has URLs — skip this.
+    if (!process.env.R2_PUBLIC_URL && property.imageKeys?.length) {
+      const signed = await Promise.all(property.imageKeys.map(getSignedImageUrl));
+      property.images = signed.filter(Boolean);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     property.views += 1;
     await property.save({ validateBeforeSave: false });
 
@@ -93,17 +95,24 @@ exports.createProperty = async (req, res, next) => {
 
     const { name, tagline, location, amenities, rooms, gender, manager } = req.body;
 
-    // Attach uploaded image paths
-    const images = req.files ? req.files.map((f) => `/uploads/${f.filename}`) : (req.body.images || []);
+    // ── CHANGED: req.files now come from multer-s3, not local disk ────────────
+    // file.key      → "properties/uuid.jpg"  — the R2 object key (save this)
+    // file.location → public CDN URL          — present when bucket is public
+    const files     = req.files ?? [];
+    const imageKeys = files.map((f) => f.key);
+    const images    = files.map((f) => f.location ?? getPublicUrl(f.key) ?? "").filter(Boolean);
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Handle rooms: it can come as a string (multipart form) or already-parsed object
-    const parsedRooms = typeof rooms === 'string' ? JSON.parse(rooms || "[]") : (rooms || []);
+    const parsedRooms = typeof rooms === "string" ? JSON.parse(rooms || "[]") : rooms || [];
 
     const property = await Property.create({
       owner: req.user._id,
-      name, tagline, location, amenities, rooms: parsedRooms,
-      gender, manager, images,
-      startingPrice: 0, // pre-save hook recalculates
+      name, tagline, location, amenities,
+      rooms: parsedRooms,
+      gender, manager,
+      imageKeys,  // ← NEW field (R2 keys for delete/sign)
+      images,     // ← public URLs or empty array
+      startingPrice: 0,
     });
 
     res.status(201).json({ success: true, message: "Property submitted for review.", property });
@@ -118,31 +127,31 @@ exports.updateProperty = async (req, res, next) => {
     const property = await Property.findById(req.params.id);
     if (!property) return res.status(404).json({ success: false, message: "Property not found." });
 
-    // Only owner or admin
     if (property.owner.toString() !== req.user._id.toString() && req.user.role !== "admin") {
       return res.status(403).json({ success: false, message: "Not authorized to update this property." });
     }
 
-    const allowed = ["name", "tagline", "location", "amenities", "rooms", "gender", "manager", "images"];
+    const allowed = ["name", "tagline", "location", "amenities", "rooms", "gender", "manager"];
     allowed.forEach((field) => {
       if (req.body[field] !== undefined) {
-        // Handle rooms: it can come as a string (multipart form) or already-parsed object
-        if (field === "rooms" && typeof req.body[field] === 'string') {
-          property[field] = JSON.parse(req.body[field]);
-        } else {
-          property[field] = req.body[field];
-        }
+        property[field] = field === "rooms" && typeof req.body[field] === "string"
+          ? JSON.parse(req.body[field])
+          : req.body[field];
       }
     });
 
-    // New images
+    // ── CHANGED: append new R2 images instead of local file paths ─────────────
     if (req.files?.length) {
-      property.images.push(...req.files.map((f) => `/uploads/${f.filename}`));
+      const files = req.files;
+      property.imageKeys.push(...files.map((f) => f.key));
+      property.images.push(
+        ...files.map((f) => f.location ?? getPublicUrl(f.key) ?? "").filter(Boolean)
+      );
     }
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Editing resets verification
     if (property.status === "verified") {
-      property.status = "pending";
+      property.status    = "pending";
       property.isVerified = false;
     }
 
@@ -163,6 +172,10 @@ exports.deleteProperty = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "Not authorized." });
     }
 
+    // ── CHANGED: delete all images from R2 before removing the document ───────
+    await deleteImages(property.imageKeys ?? []);
+    // ─────────────────────────────────────────────────────────────────────────
+
     await property.deleteOne();
     res.json({ success: true, message: "Property deleted." });
   } catch (err) {
@@ -170,7 +183,7 @@ exports.deleteProperty = async (req, res, next) => {
   }
 };
 
-// ── GET /api/properties/owner/mine — owner's own listings ────────────────────
+// ── GET /api/properties/owner/mine ────────────────────────────────────────────
 exports.getMyProperties = async (req, res, next) => {
   try {
     const properties = await Property.find({ owner: req.user._id }).sort({ createdAt: -1 });

@@ -1,6 +1,6 @@
 //presigned url for media upload cloudflare r2 controller
 
-import { getPresignedUrl as getPresignedUrlService } from '../controllers/media.controller.js';
+import { getPresignedUrl as getPresignedUrlService } from '../controllers/r2Controller.js';
 
 export const getPresignedUrl = async (req, res) => {
     try {

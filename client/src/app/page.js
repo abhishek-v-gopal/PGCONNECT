@@ -1,8 +1,13 @@
 "use client";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { getAllProperties, getCurrentUser, saveProperty } from "./api";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import Reveal, { Stagger, StaggerItem } from "./components/Reveal";
+import AnimatedCounter from "./components/AnimatedCounter";
 
 const COLLECTIONS = [
   { label: "Walk-to-Campus", sub: "Under 10 mins away", img: "https://images.unsplash.com/photo-1562774053-701939374585?w=400&q=80" },
@@ -12,9 +17,9 @@ const COLLECTIONS = [
 ];
 
 const TESTIMONIALS = [
-  { quote: "Found my perfect room in less than 24 hours. The verification process gave me peace of mind before I even arrived in the city.", name: "Jordan Davies", role: "Computer Science, Stanford", initials: "JD", color: "bg-blue-600" },
-  { quote: "The 'Walk-to-Campus' filter was a lifesaver. PG Connect actually visits these places, which is clear from the quality of photos.", name: "Sarah Lin", role: "Architecture, MIT", initials: "SL", color: "bg-slate-600" },
-  { quote: "I love the social hub listings. I moved into a community of like-minded students and felt at home from day one.", name: "Marcus King", role: "Economics, Oxford", initials: "MK", color: "bg-green-600" },
+  { quote: "Found my perfect room in less than 24 hours. The verification process gave me peace of mind before I even arrived in the city.", name: "Jordan Davies", role: "Computer Science, Stanford", initials: "JD", color: "bg-[#1D4ED8]" },
+  { quote: "The 'Walk-to-Campus' filter was a lifesaver. PG Connect actually visits these places, which is clear from the quality of photos.", name: "Sarah Lin", role: "Architecture, MIT", initials: "SL", color: "bg-slate-500" },
+  { quote: "I love the social hub listings. I moved into a community of like-minded students and felt at home from day one.", name: "Marcus King", role: "Economics, Oxford", initials: "MK", color: "bg-slate-700" },
 ];
 
 const STEPS = [
@@ -23,7 +28,12 @@ const STEPS = [
   { n: 3, title: "Seamless Move-In", desc: "Handle all paperwork and first month's payment securely through PG Connect." },
 ];
 
-const UNIVERSITIES = ["Stanford", "Cambridge", "MIT", "Oxford"];
+const STATS = [
+  { value: "2,400+", label: "Verified Listings" },
+  { value: "50k+", label: "Happy Students" },
+  { value: "98%", label: "Satisfaction Rate" },
+  { value: "Kerala", label: "Campus Coverage" },
+];
 
 export default function Home() {
   const router = useRouter();
@@ -31,24 +41,14 @@ export default function Home() {
   const [price, setPrice] = useState("Price Range");
   const [gender, setGender] = useState("Gender");
   const [wishlist, setWishlist] = useState([]);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [heroVisible, setHeroVisible] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setHeroVisible(true), 80);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Top 4 featured properties by rating
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+
   const featuredProperties = properties
     .slice()
     .sort((a, b) => (b.rating || 0) - (a.rating || 0))
     .slice(0, 4);
 
-  // Apply homepage search filters to featured properties (live-bind)
   const displayedFeatured = featuredProperties.filter((p) => {
     if (location && !String(p.location || "").toLowerCase().includes(location.toLowerCase())) return false;
     if (price === "Under ₹10k" && Number(p.price) >= 10000) return false;
@@ -58,95 +58,61 @@ export default function Home() {
     return true;
   });
 
-  // If filters remove all, fall back to top featured
   const featuredToShow = displayedFeatured.length > 0 ? displayedFeatured : featuredProperties;
 
   useEffect(() => {
     let mounted = true;
-
     const load = async () => {
       try {
         setLoading(true);
-        setError("");
         const response = await getAllProperties();
-        const raw = Array.isArray(response)
-          ? response
-          : Array.isArray(response?.properties)
-          ? response.properties
-          : [];
-
+        const raw = Array.isArray(response) ? response : Array.isArray(response?.properties) ? response.properties : [];
         const list = raw.map((p) => ({
-          id: p._id || p.id,
+          id: p.id,
           name: p.name || "Untitled Property",
-          location: (p.location && (p.location.address || p.location.city)) || "",
-          dist: (p.location && (p.location.landmark || p.location.city)) || "",
+          location: p.address || p.city || "",
+          dist: p.landmark || p.city || "",
           rating: p.rating ?? 0,
-          price: Number(p.startingPrice ?? p.rooms?.[0]?.price ?? p.price ?? 0),
-          badge: p.isVerified || p.status === "verified" ? "VERIFIED" : p.badge || null,
-          badgeColor: p.isVerified || p.status === "verified" ? "bg-green-500" : p.badgeColor || "bg-amber-500",
-          img: (p.images && p.images[0]) || p.img || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=500&q=80",
+          price: Number(p.starting_price ?? p.property_rooms?.[0]?.price ?? 0),
+          badge: p.is_verified || p.status === "verified" ? "VERIFIED" : null,
+          img: p.property_images?.[0]?.image_url || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=500&q=80",
           gender: p.gender || "Any",
         }));
-
         if (mounted) setProperties(list);
-      } catch (err) {
-        if (mounted) {
-          setError("Unable to load properties right now.");
-          setProperties([]);
-        }
+      } catch {
+        if (mounted) setProperties([]);
       } finally {
         if (mounted) setLoading(false);
       }
     };
-
     load();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
-      
+
   const toggleWishlist = async (e, id) => {
     e.stopPropagation();
     try {
       const res = await saveProperty(id);
-      if (res && res.success && res.saved) {
+      if (res?.success && res?.saved) {
         setWishlist(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-
-        // decide redirect based on logged-in user's role
         try {
           const user = await getCurrentUser();
           const role = user?.role || user?.data?.role || "";
-          if (String(role).toLowerCase() === "student") {
-            router.push("/propertys");
-            return;
-          }
-          if (String(role).toLowerCase() === "owner" || String(role).toLowerCase() === "landlord") {
-            router.push("/ownersDashboard");
-            return;
-          }
-        } catch (innerErr) {
-          console.error('Unable to determine user role for redirect', innerErr);
-        }
-      } else {
-        console.warn('Save API responded but did not confirm save', res);
+          if (String(role).toLowerCase() === "student") { router.push("/propertys"); return; }
+          if (["owner", "landlord"].includes(String(role).toLowerCase())) { router.push("/ownersDashboard"); return; }
+        } catch {}
       }
     } catch (err) {
-      console.error('Error saving property:', err);
-      const status = err?.response?.status;
-      if (status === 401 || status === 403) {
-        // Not authenticated/authorized — send user to sign in
-        router.push('/signin');
-        return;
-      }
+      if (err?.status === 401 || err?.status === 403) router.push('/signin');
     }
   };
 
-  const goSearch = () => router.push(`/propertys?location=${encodeURIComponent(location || "Koramangala")}&price=${encodeURIComponent(price)}&gender=${encodeURIComponent(gender)}`);
+  const goSearch = () => router.push(`/propertys?location=${encodeURIComponent(location || "Kerala")}&price=${encodeURIComponent(price)}&gender=${encodeURIComponent(gender)}`);
 
   return (
     <>
       <Head>
-        <title>PG Connect — Find Your Curated Sanctuary</title>
+        <title>PG Connect — Find Your Perfect PG in Kerala</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
@@ -154,88 +120,29 @@ export default function Home() {
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           html { scroll-behavior: smooth; }
-          body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #0f1117; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+          body { font-family: 'Plus Jakarta Sans', sans-serif; background: #EFF6FF; color: #1E3A5F; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
           .font-display { font-family: 'Fraunces', serif; }
           select { appearance: none; background: transparent; cursor: pointer; }
           .no-scroll::-webkit-scrollbar { display: none; }
           .no-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-
-          /* Hero animations */
-          .hero-fade { opacity: 0; transform: translateY(28px); transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1); }
-          .hero-fade.in { opacity: 1; transform: translateY(0); }
-          .delay-1 { transition-delay: .1s; }
-          .delay-2 { transition-delay: .22s; }
-          .delay-3 { transition-delay: .36s; }
-          .delay-4 { transition-delay: .5s; }
-
-          /* Card hover */
-          .pg-card { transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s; }
-          .pg-card:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(0,0,0,.13); }
-          .pg-card .card-img { transition: transform .5s cubic-bezier(.22,1,.36,1); }
-          .pg-card:hover .card-img { transform: scale(1.07); }
-
-
-          /* Step number */
-          .step-num { width: 32px; height: 32px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-
-          /* Search bar input */
+          .pg-card-hover { transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s; }
+          .pg-card-hover:hover { transform: translateY(-8px); box-shadow: 0 24px 55px rgba(29,78,216,.16); }
+          .pg-card-hover .card-img { transition: transform .6s cubic-bezier(.22,1,.36,1); }
+          .pg-card-hover:hover .card-img { transform: scale(1.08); }
           .search-field { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
           .search-field label { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #94a3b8; }
-          .search-field input, .search-field select { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; color: #0f1117; border: none; outline: none; background: transparent; width: 100%; }
+          .search-field input, .search-field select { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1E3A5F; border: none; outline: none; background: transparent; width: 100%; }
           .search-field input::placeholder { color: #94a3b8; font-weight: 500; }
-
-          /* University trust logos */
-          .uni-logo { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #64748b; }
-
-          /* Smooth section reveal via intersection observer */
-          .reveal { opacity: 0; transform: translateY(32px); transition: opacity .65s cubic-bezier(.22,1,.36,1), transform .65s cubic-bezier(.22,1,.36,1); }
-          .reveal.visible { opacity: 1; transform: translateY(0); }
         `}</style>
       </Head>
 
-      <div className="min-h-screen bg-white text-black/90">
+      <div className="min-h-screen" style={{ background: "#EFF6FF", color: "#1E3A5F" }}>
 
-        {/* ── NAVBAR ── */}
-        <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-            <button onClick={() => router.push("/")} className="font-display text-blue-600 text-lg font-bold tracking-tight cursor-pointer shrink-0">PG Connect</button>
-
-            <div className="hidden md:flex items-center gap-0.5">
-              {[["Explore", true], ["List Property", false], ["Student Guides", false], ["Help", false]].map(([l, active]) => (
-                <button key={l}
-                  onClick={() => l === "List Property" ? router.push("/propertys") : null}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer
-                    ${active ? "text-blue-600 border-b-2 border-blue-600 rounded-none pb-[10px]" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"}`}>
-                  {l}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button onClick={() => router.push("/signin")}
-                className="bg-blue-600 hover:bg-blue-700 active:scale-[.98] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer hidden sm:block">
-                Sign In
-              </button>
-              <button className="md:hidden p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg" onClick={() => setMenuOpen(!menuOpen)}>
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          {menuOpen && (
-            <div className="md:hidden border-t border-slate-100 bg-white px-4 py-4 flex flex-col gap-3">
-              {["Explore", "List Property", "Student Guides", "Help"].map(l => (
-                <button key={l} className="text-sm font-medium text-slate-600 text-left">{l}</button>
-              ))}
-              <button onClick={() => router.push("/signin")} className="bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl mt-1">Sign In</button>
-            </div>
-          )}
-        </nav>
+        <Navbar />
 
         {/* ── HERO ── */}
-        <section className="relative min-h-[88vh] flex items-center overflow-hidden bg-slate-50">
-          {/* Background image right side */}
+        <section className="relative min-h-[88vh] flex items-center overflow-hidden" style={{ background: "#EFF6FF" }}>
+          {/* Right side image */}
           <div className="absolute inset-0 flex">
             <div className="w-full md:w-1/2" />
             <div className="hidden md:block w-1/2 relative">
@@ -244,43 +151,57 @@ export default function Home() {
                 alt="Modern student room"
                 className="absolute inset-0 w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-50 via-slate-50/40 to-transparent" />
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #EFF6FF, #EFF6FF40, transparent)" }} />
             </div>
           </div>
+          {/* Animated decorative blobs */}
+          <div className="pg-blob absolute top-20 right-[48%] w-64 h-64 rounded-full opacity-20 blur-2xl pointer-events-none" style={{ background: "#1D4ED8" }} />
+          <div className="pg-blob-alt absolute bottom-0 left-[8%] w-52 h-52 rounded-full opacity-10 blur-2xl pointer-events-none" style={{ background: "#F97316" }} />
 
-          {/* Content */}
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24 w-full text-black/90">
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24 w-full" style={{ color: "#1E3A5F" }}>
             <div className="max-w-xl">
-              <div className={`hero-fade${heroVisible ? " in" : ""}`}>
-                <span className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-6">
-                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                  2,400+ Verified Listings
-                </span>
-              </div>
+              <motion.span
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="inline-flex items-center gap-2 border text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-6"
+                style={{ background: "#dbeafe", borderColor: "#bfdbfe", color: "#1D4ED8" }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#1D4ED8" }} />
+                2,400+ Verified Listings in Kerala
+              </motion.span>
 
-              <h1 className={`font-display text-[3.2rem] sm:text-[4rem] lg:text-[4.8rem] leading-[1.05] font-bold tracking-tight mb-6 hero-fade${heroVisible ? " in" : ""} delay-1`}>
+              <motion.h1
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                className="font-display text-[3.2rem] sm:text-[4rem] lg:text-[4.8rem] leading-[1.05] font-bold tracking-tight mb-6"
+                style={{ color: "#1E3A5F" }}>
                 Find your{" "}
-                <span className="text-blue-600 italic">curated</span>
+                <span style={{ color: "#1D4ED8" }} className="italic">perfect PG</span>
                 <br />
-                <span className="text-blue-600 italic">sanctuary</span> for
-                <br />
-                university life.
-              </h1>
+                near your{" "}
+                <span style={{ color: "#F97316" }} className="italic">campus.</span>
+              </motion.h1>
 
-              <p className={`text-slate-500 text-base sm:text-lg leading-relaxed max-w-md mb-10 hero-fade${heroVisible ? " in" : ""} delay-2`}>
-                Beyond just a room. Discover premium student living spaces hand-picked for comfort, community, and academic success.
-              </p>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="text-base sm:text-lg leading-relaxed max-w-md mb-10" style={{ color: "#1E3A5F99" }}>
+                Kerala's trusted PG marketplace for students. Verified listings, transparent pricing, and a referral program that rewards your network.
+              </motion.p>
 
-              {/* Search bar */}
-              <div className={`hero-fade${heroVisible ? " in" : ""} delay-3 w-full`}>
-                {/* Tablet & Desktop search (md and up) */}
-                <div className="hidden md:flex bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden p-1 items-center gap-0.5 w-full lg:max-w-2xl">
-                  <div className="search-field flex-1 px-3 sm:px-4 py-2.5 border-r border-slate-100 min-w-0">
-                    {/* <label>Near University</label> */}
+              {/* Search bar — desktop */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                className="w-full">
+                <div className="hidden md:flex bg-white rounded-2xl shadow-xl border border-blue-100 overflow-hidden p-1 items-center gap-0.5 w-full lg:max-w-2xl">
+                  <div className="search-field flex-1 px-3 sm:px-4 py-2.5 border-r border-blue-50 min-w-0">
                     <input type="text" placeholder="Near University..." value={location} onChange={e => setLocation(e.target.value)} onKeyDown={e => e.key === "Enter" && goSearch()} />
                   </div>
-                  <div className="search-field flex-1 px-3 sm:px-4 py-2.5 border-r border-slate-100 min-w-0">
-                    {/* <label>Price Range</label> */}
+                  <div className="search-field flex-1 px-3 sm:px-4 py-2.5 border-r border-blue-50 min-w-0">
                     <select value={price} onChange={e => setPrice(e.target.value)}>
                       <option>Price Range</option>
                       <option>Under ₹10k</option>
@@ -289,7 +210,6 @@ export default function Home() {
                     </select>
                   </div>
                   <div className="search-field flex-1 px-3 sm:px-4 py-2.5 min-w-0">
-                    {/* <label>Gender</label> */}
                     <select value={gender} onChange={e => setGender(e.target.value)}>
                       <option>Gender</option>
                       <option>Boys</option>
@@ -297,171 +217,218 @@ export default function Home() {
                       <option>Co-ed</option>
                     </select>
                   </div>
-                  <button onClick={goSearch} className="bg-blue-600 hover:bg-blue-700 active:scale-[.97] text-white text-xs sm:text-sm font-bold px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0 m-0.5">
+                  <motion.button
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={goSearch}
+                    className="text-white text-xs sm:text-sm font-bold px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 m-0.5"
+                    style={{ background: "#1D4ED8" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#1e40af"}
+                    onMouseLeave={e => e.currentTarget.style.background = "#1D4ED8"}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
                     <span className="hidden sm:inline">Search</span>
-                  </button>
+                  </motion.button>
                 </div>
 
-                {/* Small tablet search (sm to md) - Stack layout */}
-                <div className="hidden sm:flex md:hidden flex-col gap-2.5">
-                  <div className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
-                    <div className="px-3.5 py-2.5 border-b border-slate-100">
-                      <label className="block text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Near University</label>
-                      <input type="text" placeholder="Search by university..." value={location} onChange={e => setLocation(e.target.value)}
-                        className="w-full text-xs sm:text-sm font-semibold text-slate-900 outline-none bg-transparent placeholder-slate-400" />
-                    </div>
-                    <div className="flex gap-0">
-                      <div className="flex-1 px-3.5 py-2.5 border-r border-slate-100">
-                        <label className="block text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Price</label>
-                        <select value={price} onChange={e => setPrice(e.target.value)} className="w-full text-xs sm:text-sm font-semibold text-slate-900 outline-none bg-transparent">
-                          <option>Price Range</option><option>Under ₹10k</option><option>₹10k–₹20k</option><option>Above ₹20k</option>
-                        </select>
-                      </div>
-                      <div className="flex-1 px-3.5 py-2.5">
-                        <label className="block text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Gender</label>
-                        <select value={gender} onChange={e => setGender(e.target.value)} className="w-full text-xs sm:text-sm font-semibold text-slate-900 outline-none bg-transparent">
-                          <option>Gender</option><option>Boys</option><option>Girls</option><option>Co-ed</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={goSearch} className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[.97] text-white font-semibold text-sm py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                    </svg>
-                    Search
-                  </button>
-                </div>
-
-                {/* Mobile search (below sm) - Full stack */}
-                <div className="sm:hidden flex flex-col gap-2">
-                  <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100">
-                      <label className="block text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Near University</label>
+                {/* Mobile search */}
+                <div className="md:hidden flex flex-col gap-2">
+                  <div className="bg-white rounded-2xl shadow-xl border border-blue-100 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-blue-50">
                       <input type="text" placeholder="Search by city or university..." value={location} onChange={e => setLocation(e.target.value)}
-                        className="w-full text-sm font-semibold text-slate-900 outline-none bg-transparent placeholder-slate-400" />
+                        className="w-full text-sm font-semibold outline-none bg-transparent placeholder-slate-400" style={{ color: "#1E3A5F" }} />
                     </div>
                     <div className="flex">
-                      <div className="flex-1 px-4 py-3 border-r border-slate-100">
-                        <label className="block text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Price</label>
-                        <select value={price} onChange={e => setPrice(e.target.value)} className="w-full text-sm font-semibold text-slate-900 outline-none bg-transparent">
+                      <div className="flex-1 px-4 py-3 border-r border-blue-50">
+                        <select value={price} onChange={e => setPrice(e.target.value)} className="w-full text-sm font-semibold outline-none bg-transparent" style={{ color: "#1E3A5F" }}>
                           <option>Price Range</option><option>Under ₹10k</option><option>₹10k–₹20k</option><option>Above ₹20k</option>
                         </select>
                       </div>
                       <div className="flex-1 px-4 py-3">
-                        <label className="block text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Gender</label>
-                        <select value={gender} onChange={e => setGender(e.target.value)} className="w-full text-sm font-semibold text-slate-900 outline-none bg-transparent">
+                        <select value={gender} onChange={e => setGender(e.target.value)} className="w-full text-sm font-semibold outline-none bg-transparent" style={{ color: "#1E3A5F" }}>
                           <option>Gender</option><option>Boys</option><option>Girls</option><option>Co-ed</option>
                         </select>
                       </div>
                     </div>
                   </div>
-                  <button onClick={goSearch} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer">
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={goSearch} className="w-full text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 cursor-pointer"
+                    style={{ background: "#1D4ED8" }}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
                     Search Properties
-                  </button>
+                  </motion.button>
                 </div>
-              </div>
+              </motion.div>
+
+              {/* Popular searches */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.46 }}
+                className="mt-5 flex flex-wrap gap-2">
+                <span className="text-xs font-semibold" style={{ color: "#1E3A5F80" }}>Popular:</span>
+                {["Thrissur", "Kozhikode", "Kochi", "Trivandrum"].map(city => (
+                  <motion.button key={city} whileHover={{ scale: 1.06, y: -1 }} whileTap={{ scale: 0.96 }} onClick={() => { setLocation(city); goSearch(); }}
+                    className="text-xs font-semibold px-3 py-1 rounded-full border border-blue-200 hover:border-[#1D4ED8] hover:text-[#1D4ED8] transition-colors cursor-pointer"
+                    style={{ background: "white", color: "#1E3A5F" }}>
+                    {city}
+                  </motion.button>
+                ))}
+              </motion.div>
             </div>
+          </div>
+        </section>
+
+        {/* ── STATS BAR ── */}
+        <section className="pg-gradient-animated py-8" style={{ background: "linear-gradient(120deg, #1D4ED8, #1e40af, #1D4ED8)" }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center text-white" staggerChildren={0.1}>
+              {STATS.map(s => (
+                <StaggerItem key={s.label}>
+                  <p className="text-2xl sm:text-3xl font-bold">
+                    <AnimatedCounter value={s.value} />
+                  </p>
+                  <p className="text-sm text-blue-200 mt-0.5">{s.label}</p>
+                </StaggerItem>
+              ))}
+            </Stagger>
           </div>
         </section>
 
         {/* ── CURATED COLLECTIONS ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-20 ">
-          <div className="flex items-end justify-between mb-8">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
+          <Reveal className="flex items-end justify-between mb-8">
             <div>
-              <h2 className="font-display text-2xl sm:text-3xl font-bold text-slate-900">Curated Collections</h2>
-              <p className="text-sm text-slate-500 mt-1">Tailored living spaces for every student need.</p>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold" style={{ color: "#1E3A5F" }}>Curated Collections</h2>
+              <p className="text-sm mt-1" style={{ color: "#1E3A5F80" }}>Tailored living spaces for every student need.</p>
             </div>
-            <button onClick={goSearch} className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1">
-              View All Collections
+            <button onClick={goSearch} className="text-sm font-semibold hover:opacity-80 transition-opacity cursor-pointer whitespace-nowrap flex items-center gap-1" style={{ color: "#1D4ED8" }}>
+              View All
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
               </svg>
             </button>
-          </div>
+          </Reveal>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {COLLECTIONS.map((c, i) => (
-              <div key={c.label} className="relative overflow-hidden rounded-2xl cursor-pointer aspect-square w-full flex items-center justify-center group" onClick={goSearch}>
-                <img src={c.img} alt={c.label} loading="lazy" className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/0 to-transparent"></div>
-                <div className="absolute bottom-0 left-0 right-0 z-10 p-4">
-                  <p className="text-white font-bold text-sm sm:text-base leading-tight">{c.label}</p>
-                  <p className="text-white/70 text-xs mt-0.5">{c.sub}</p>
-                </div>
-              </div>
+          <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" staggerChildren={0.08}>
+            {COLLECTIONS.map((c) => (
+              <StaggerItem key={c.label}>
+                <motion.div
+                  whileHover={{ y: -6 }}
+                  transition={{ duration: 0.3 }}
+                  className="relative overflow-hidden rounded-2xl cursor-pointer aspect-square flex items-center justify-center group shadow-sm hover:shadow-xl"
+                  onClick={goSearch}>
+                  <img src={c.img} alt={c.label} loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 z-10 p-4">
+                    <p className="text-white font-bold text-sm sm:text-base leading-tight">{c.label}</p>
+                    <p className="text-white/70 text-xs mt-0.5">{c.sub}</p>
+                  </div>
+                </motion.div>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </section>
 
         {/* ── TOP RATED PROPERTIES ── */}
-        <section className="bg-slate-50 py-14 sm:py-20">
+        <section className="py-14 sm:py-20" style={{ background: "white" }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-10">
-              <span className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-4">
+            <Reveal className="text-center mb-10">
+              <span className="inline-flex items-center gap-1.5 border text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-4"
+                style={{ background: "#dbeafe", borderColor: "#bfdbfe", color: "#1D4ED8" }}>
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 Top Rated Properties
               </span>
-              <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900">
-                Discover the Best of Campus Living
+              <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold" style={{ color: "#1E3A5F" }}>
+                Discover the Best PGs in Kerala
               </h2>
-            </div>
+            </Reveal>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-              {featuredToShow.map(p => (
-                <div key={p.id} className="pg-card bg-white rounded-2xl overflow-hidden border border-slate-200 cursor-pointer" onClick={() => router.push(`/property/${p.id}`)}>
-                  <div className="relative overflow-hidden aspect-[4/3]">
-                    <img src={p.img} alt={p.name} loading="lazy" className="card-img w-full h-full object-cover" />
-                    <span className={`absolute top-3 left-3 ${p.badgeColor} text-white text-[10px] font-bold px-2.5 py-1 rounded-full`}>{p.badge}</span>
-                    <button onClick={e => toggleWishlist(e, p.id)} className="absolute top-3 right-3 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill={wishlist.includes(p.id) ? "#ef4444" : "none"} stroke={wishlist.includes(p.id) ? "#ef4444" : "#94a3b8"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-1 mb-1">
-                      <p className="font-bold text-sm text-slate-900 leading-snug">{p.name}</p>
-                      <span className="flex items-center gap-0.5 text-xs font-bold text-slate-800 shrink-0">
-                        <span className="text-blue-500">★</span>{p.rating}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 mb-3 flex items-center gap-1">
-                      <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                      {p.dist}
-                    </p>
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <span className="text-lg font-bold text-slate-900">${p.price}</span>
-                        <span className="text-xs text-slate-400"> /month</span>
+            {loading && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                {[1,2,3,4].map(i => <div key={i} className="pg-skeleton h-72 rounded-2xl" />)}
+              </div>
+            )}
+
+            {!loading && (
+              <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5" staggerChildren={0.08}>
+                {featuredToShow.map(p => (
+                  <StaggerItem key={p.id}>
+                    <div className="pg-card-hover bg-white rounded-2xl overflow-hidden border cursor-pointer h-full"
+                      style={{ borderColor: "#e0f2fe" }}
+                      onClick={() => router.push(`/property/${p.id}`)}>
+                      <div className="relative overflow-hidden aspect-[4/3]">
+                        <img src={p.img} alt={p.name} loading="lazy" className="card-img w-full h-full object-cover" />
+                        {p.badge && (
+                          <span className="absolute top-3 left-3 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
+                            style={{ background: "#06B6D4" }}>
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            {p.badge}
+                          </span>
+                        )}
+                        <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} onClick={e => toggleWishlist(e, p.id)} className="absolute top-3 right-3 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md cursor-pointer">
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24"
+                            fill={wishlist.includes(p.id) ? "#ef4444" : "none"}
+                            stroke={wishlist.includes(p.id) ? "#ef4444" : "#94a3b8"}
+                            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                          </svg>
+                        </motion.button>
                       </div>
-                      <button onClick={e => { e.stopPropagation(); router.push(`/property/${p.id}`); }}
-                        className="border border-slate-200 hover:border-blue-500 hover:text-blue-600 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer">
-                        Details
-                      </button>
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-1 mb-1">
+                          <p className="font-bold text-sm leading-snug" style={{ color: "#1E3A5F" }}>{p.name}</p>
+                          <span className="flex items-center gap-0.5 text-xs font-bold shrink-0" style={{ color: "#1E3A5F" }}>
+                            <span style={{ color: "#F97316" }}>★</span>{p.rating}
+                          </span>
+                        </div>
+                        <p className="text-xs mb-3 flex items-center gap-1" style={{ color: "#1E3A5F80" }}>
+                          <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                          {p.dist}
+                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-lg font-bold" style={{ color: "#1E3A5F" }}>₹{p.price.toLocaleString('en-IN')}</span>
+                            <span className="text-xs" style={{ color: "#1E3A5F80" }}> /month</span>
+                          </div>
+                          <button onClick={e => { e.stopPropagation(); router.push(`/property/${p.id}`); }}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer border"
+                            style={{ borderColor: "#bfdbfe", color: "#1D4ED8" }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = "#1D4ED8"; e.currentTarget.style.background = "#dbeafe"; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = "#bfdbfe"; e.currentTarget.style.background = "transparent"; }}>
+                            Details
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  </StaggerItem>
+                ))}
+              </Stagger>
+            )}
+
+            <Reveal className="text-center mt-10" delay={0.1}>
+              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} onClick={goSearch} className="text-white font-bold px-8 py-3.5 rounded-2xl cursor-pointer shadow-md hover:shadow-lg"
+                style={{ background: "#1D4ED8" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#1e40af"}
+                onMouseLeave={e => e.currentTarget.style.background = "#1D4ED8"}>
+                View All Properties
+              </motion.button>
+            </Reveal>
           </div>
         </section>
 
         {/* ── TRUST SECTION ── */}
-        <section className="py-14 sm:py-20 border-b border-slate-100">
+        <section className="py-14 sm:py-20 bg-slate-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            {/* University logos */}
-            <div className="text-center mb-12">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-6">Trusted by students from</p>
+            <Reveal className="text-center mb-12">
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-6" style={{ color: "#1E3A5F60" }}>Trusted by students from</p>
               <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
-                {UNIVERSITIES.map(u => (
-                  <div key={u} className="uni-logo">
+                {["Calicut University", "CUSAT", "Kerala University", "NIT Calicut"].map(u => (
+                  <div key={u} className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#1E3A5F80" }}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     </svg>
@@ -469,122 +436,141 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Reveal>
 
             {/* Testimonials */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <Stagger className="grid grid-cols-1 sm:grid-cols-3 gap-5" staggerChildren={0.1}>
               {TESTIMONIALS.map((t, i) => (
-                <div key={i} className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                  <p className="text-sm text-slate-600 leading-relaxed mb-5">"{t.quote}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-full ${t.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>{t.initials}</div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">{t.name}</p>
-                      <p className="text-[11px] text-slate-400">{t.role}</p>
+                <StaggerItem key={i}>
+                  <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.25 }} className="bg-white rounded-2xl p-6 border h-full shadow-sm hover:shadow-lg" style={{ borderColor: "#e0f2fe" }}>
+                    <div className="flex gap-1 mb-4">
+                      {[1,2,3,4,5].map(s => <span key={s} style={{ color: "#F97316" }}>★</span>)}
                     </div>
-                  </div>
-                </div>
+                    <p className="text-sm leading-relaxed mb-5" style={{ color: "#1E3A5F" }}>"{t.quote}"</p>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-full ${t.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>{t.initials}</div>
+                      <div>
+                        <p className="text-xs font-bold" style={{ color: "#1E3A5F" }}>{t.name}</p>
+                        <p className="text-[11px]" style={{ color: "#1E3A5F80" }}>{t.role}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
           </div>
         </section>
 
         {/* ── THREE STEPS ── */}
-        <section className="py-14 sm:py-20">
+        <section className="py-14 sm:py-20 overflow-hidden" style={{ background: "white" }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-              {/* Left text */}
-              <div className="flex-1 w-full">
-                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 leading-tight mb-10">
+              <Reveal direction="right" className="flex-1 w-full">
+                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-10" style={{ color: "#1E3A5F" }}>
                   Three steps to your new university life.
                 </h2>
-                <div className="space-y-7">
+                <Stagger className="space-y-7" staggerChildren={0.12}>
                   {STEPS.map(s => (
-                    <div key={s.n} className="flex items-start gap-4">
-                      <div className="step-num shrink-0 mt-0.5">{s.n}</div>
-                      <div>
-                        <p className="font-bold text-slate-900 text-base mb-1">{s.title}</p>
-                        <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
+                    <StaggerItem key={s.n}>
+                      <div className="flex items-start gap-4">
+                        <motion.div whileHover={{ scale: 1.1, rotate: 6 }} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 mt-0.5"
+                          style={{ background: "#1D4ED8" }}>
+                          {s.n}
+                        </motion.div>
+                        <div>
+                          <p className="font-bold text-base mb-1" style={{ color: "#1E3A5F" }}>{s.title}</p>
+                          <p className="text-sm leading-relaxed" style={{ color: "#1E3A5F80" }}>{s.desc}</p>
+                        </div>
                       </div>
-                    </div>
+                    </StaggerItem>
                   ))}
-                </div>
-              </div>
+                </Stagger>
+              </Reveal>
 
-              {/* Right image */}
-              <div className="flex-1 w-full relative">
+              <Reveal direction="left" delay={0.15} className="flex-1 w-full relative">
                 <div className="rounded-2xl overflow-hidden shadow-2xl">
                   <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80" alt="Student moving in" className="w-full h-72 sm:h-96 object-cover block" />
                 </div>
-                {/* Floating verified badge */}
-                <div className="absolute bottom-6 left-6 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 border border-slate-100">
-                  <div className="w-9 h-9 bg-green-500 rounded-full flex items-center justify-center shrink-0">
+                <motion.div
+                  initial={{ opacity: 0, y: 16, scale: 0.9 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                  className="absolute bottom-6 left-6 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 border border-blue-100">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "#1D4ED8" }}>
                     <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-900">Verified Status</p>
-                    <p className="text-[10px] text-slate-400">Background check complete</p>
+                    <p className="text-xs font-bold" style={{ color: "#1E3A5F" }}>Verified Status</p>
+                    <p className="text-[10px]" style={{ color: "#1E3A5F80" }}>Background check complete</p>
                   </div>
-                </div>
-              </div>
+                </motion.div>
+              </Reveal>
             </div>
           </div>
         </section>
+
+        {/* ── REFERRAL BANNER ── */}
+        <Reveal as="section" className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+          <div className="rounded-3xl overflow-hidden relative p-8 sm:p-12 text-white"
+            style={{ background: "#1D4ED8" }}>
+            <div className="pg-blob absolute -top-12 -right-12 w-48 h-48 rounded-full opacity-20 pointer-events-none" style={{ background: "#ffffff" }} />
+            <div className="pg-blob-alt absolute -bottom-8 -left-8 w-36 h-36 rounded-full opacity-10 pointer-events-none" style={{ background: "#ffffff" }} />
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div>
+                <span className="inline-block text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-3" style={{ background: "rgba(249,115,22,0.3)", color: "#fed7aa" }}>
+                  Earn While You Help
+                </span>
+                <h2 className="font-display text-2xl sm:text-3xl font-bold leading-tight mb-2">
+                  Refer a PG owner,<br />earn 2% commission every month.
+                </h2>
+                <p className="text-blue-100 text-sm">Share your unique link. Get paid when tenants pay rent.</p>
+              </div>
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }} onClick={() => router.push("/register")}
+                className="shrink-0 font-bold text-sm px-7 py-3.5 rounded-2xl cursor-pointer whitespace-nowrap shadow-lg"
+                style={{ background: "#F97316", color: "white" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#ea6c0a"}
+                onMouseLeave={e => e.currentTarget.style.background = "#F97316"}>
+                Start Earning Now
+              </motion.button>
+            </div>
+          </div>
+        </Reveal>
 
         {/* ── CTA BANNER ── */}
-        <section className="mx-4 sm:mx-6 lg:mx-8 mb-14 sm:mb-20 rounded-3xl bg-blue-600 overflow-hidden relative">
-          {/* Decorative blobs */}
-          <div className="absolute -top-16 -right-16 w-64 h-64 bg-blue-500 rounded-full opacity-50" />
-          <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-blue-700 rounded-full opacity-40" />
-          <div className="relative z-10 text-center px-6 py-16 sm:py-20">
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
-              List your property and reach<br />
-              <span className="italic">50k+ students.</span>
-            </h2>
-            <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto mb-9 leading-relaxed">
-              Join our curated network of property owners providing high-quality student housing across the globe.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button onClick={() => router.push("/list-property")}
-                className="bg-white hover:bg-slate-50 active:scale-[.98] text-blue-700 font-bold text-sm px-7 py-3.5 rounded-2xl transition-all cursor-pointer">
-                Get Started Now
-              </button>
-              <button className="border border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-7 py-3.5 rounded-2xl transition-all cursor-pointer">
-                Speak to an Expert
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* ── FOOTER ── */}
-        <footer className="border-t border-slate-100 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="font-display font-bold text-slate-900 text-base">PG Connect</p>
-              <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. The Curated Sanctuary</p>
-            </div>
-            <div className="flex flex-wrap gap-5 items-center">
-              {["About Us", "Privacy", "Terms", "Support", "Careers"].map(l => (
-                <a key={l} href="#" className="text-xs text-slate-500 hover:text-blue-600 transition-colors">{l}</a>
-              ))}
-              <div className="flex items-center gap-2 ml-2">
-                <button className="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-500 transition-colors cursor-pointer">
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                  </svg>
-                </button>
-                <button className="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-500 transition-colors cursor-pointer">
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
-                  </svg>
-                </button>
+        <Reveal as="section" className="mx-4 sm:mx-6 lg:mx-8 mb-14 sm:mb-20 rounded-3xl overflow-hidden relative"
+          >
+          <div style={{ background: "#1E3A5F" }} className="relative overflow-hidden rounded-3xl">
+            <div className="pg-blob absolute -top-16 -right-16 w-64 h-64 rounded-full opacity-10 pointer-events-none" style={{ background: "white" }} />
+            <div className="pg-blob-alt absolute -bottom-12 -left-12 w-48 h-48 rounded-full opacity-10 pointer-events-none" style={{ background: "white" }} />
+            <div className="relative z-10 text-center px-6 py-16 sm:py-20">
+              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
+                List your property and reach<br />
+                <span className="italic">50k+ students.</span>
+              </h2>
+              <p className="text-sm sm:text-base max-w-lg mx-auto mb-9 leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
+                Join our curated network of property owners providing high-quality student housing across Kerala.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }} onClick={() => router.push("/listProperty")}
+                  className="font-bold text-sm px-7 py-3.5 rounded-2xl cursor-pointer shadow-lg"
+                  style={{ background: "#F97316", color: "white" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#ea6c0a"}
+                  onMouseLeave={e => e.currentTarget.style.background = "#F97316"}>
+                  Get Started Now
+                </motion.button>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }} className="border font-semibold text-sm px-7 py-3.5 rounded-2xl cursor-pointer text-white"
+                  style={{ borderColor: "rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.05)" }}>
+                  Speak to an Expert
+                </motion.button>
               </div>
             </div>
           </div>
-        </footer>
+        </Reveal>
 
+        <Footer />
       </div>
     </>
   );

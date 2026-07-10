@@ -2,7 +2,11 @@
 import Head from "next/head";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { getAllProperties } from "../api";
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import { Stagger, StaggerItem } from "../components/Reveal";
 
 const AMENITY_ICONS = {
   wifi: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>,
@@ -51,29 +55,31 @@ const getInitialBudget = (priceLabel) => {
 };
 
 const mapProperty = (property) => {
-  const room = property?.rooms?.[0] || {};
-  const availableBeds = Number(property?.availableBeds ?? room?.availableBeds ?? 0);
+  const rooms = Array.isArray(property?.property_rooms) ? property.property_rooms : [];
+  const room = rooms[0] || {};
+  const availableBeds = Number(property?.available_beds ?? room?.available_beds ?? 0);
 
   return {
-    id: property?._id,
+    id: property?.id,
     name: property?.name || "Untitled Property",
-    location: property?.location?.address || property?.location?.mapLabel || property?.location?.city || "Unknown location",
-    distance: property?.location?.city && property?.location?.landmark
-      ? `${property.location.city} • ${property.location.landmark}`
-      : property?.location?.city || property?.location?.landmark || "",
+    location: property?.address || property?.city || "Unknown location",
+    distance: property?.city && property?.landmark
+      ? `${property.city} • ${property.landmark}`
+      : property?.city || property?.landmark || "",
     rating: property?.rating ?? null,
     isNew: false,
-    price: Number(property?.startingPrice ?? room?.price ?? 0),
-    badge: property?.isVerified || property?.status === "verified" ? "VERIFIED" : null,
-    badgeStyle: "bg-green-500 text-white",
+    price: Number(property?.starting_price ?? room?.price ?? 0),
+    badge: property?.is_verified || property?.status === "verified" ? "VERIFIED" : null,
+    badgeStyle: "",
+    badgeColor: "#06B6D4",
     tag: availableBeds > 0 ? `${availableBeds} Beds Left` : "Full",
-    tagStyle: availableBeds > 0 ? "bg-amber-400 text-white" : "bg-slate-500 text-white",
+    tagColor: availableBeds > 0 ? "#F97316" : "#64748b",
     amenities: Array.isArray(property?.amenities) ? property.amenities : [],
     amenityIcons: Array.isArray(property?.amenities) ? property.amenities.map(getAmenityIconKey) : [],
-    roomType: room?.type || (Array.isArray(property?.rooms) && property.rooms.length > 1 ? "Multiple" : "Single"),
+    roomType: room?.type || (rooms.length > 1 ? "Multiple" : "Single"),
     gender: property?.gender || "Any",
     wishlist: false,
-    image: property?.images?.[0] || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=700&q=80",
+    image: property?.property_images?.[0]?.image_url || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=700&q=80",
   };
 };
 
@@ -104,7 +110,6 @@ export default function SearchResults() {
   const [wishlist, setWishlist] = useState([2]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -199,15 +204,15 @@ export default function SearchResults() {
   const FilterSidebar = () => (
     <div className="w-full space-y-6">
       <div>
-        <h2 className="text-base font-bold text-slate-900">Filters</h2>
-        <p className="text-xs text-slate-400 mt-0.5">Refine your sanctuary</p>
+        <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Filters</h2>
+        <p className="text-xs mt-0.5" style={{ color: "#1E3A5F80" }}>Refine your sanctuary</p>
       </div>
 
       {/* Budget Range */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          <span className="text-sm font-bold text-blue-600">Budget Range</span>
+          <svg className="w-4 h-4" style={{ color: "#1D4ED8" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          <span className="text-sm font-bold" style={{ color: "#1D4ED8" }}>Budget Range</span>
         </div>
         <div className="flex justify-between text-xs text-slate-500 mb-2">
           <span>₹{budgetMin.toLocaleString("en-IN")}</span>
@@ -215,10 +220,10 @@ export default function SearchResults() {
         </div>
         <input type="range" min={0} max={25000} step={500} value={budgetMin}
           onChange={(e) => { setBudgetActive(true); setBudgetMin(Number(e.target.value)); }}
-          className="w-full accent-blue-600 cursor-pointer" />
+          className="w-full cursor-pointer" style={{ accentColor: "#1D4ED8" }} />
         <input type="range" min={0} max={50000} step={500} value={budgetMax}
           onChange={(e) => { setBudgetActive(true); setBudgetMax(Number(e.target.value)); }}
-          className="w-full accent-blue-600 cursor-pointer mt-1" />
+          className="w-full cursor-pointer mt-1" style={{ accentColor: "#1D4ED8" }} />
       </div>
 
       <div className="h-px bg-slate-100" />
@@ -226,24 +231,25 @@ export default function SearchResults() {
       {/* Room Type */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 14h20"/></svg>
-          <span className="text-sm font-bold text-blue-600">Room Type</span>
+          <svg className="w-4 h-4 text-[#1D4ED8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 14h20"/></svg>
+          <span className="text-sm font-bold text-[#1D4ED8]">Room Type</span>
         </div>
         <div className="space-y-2.5">
           {ROOM_TYPES.map((t) => (
             <label key={t} className="flex items-center gap-3 cursor-pointer group">
-              <div
+              <motion.div
+                whileTap={{ scale: 0.85 }}
                 onClick={() => toggleRoomType(t)}
-                className={`w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0 cursor-pointer
-                  ${roomTypes.includes(t) ? "bg-blue-600 border-blue-600" : "border-slate-300 bg-white group-hover:border-blue-400"}`}
+                className="w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer"
+                style={roomTypes.includes(t) ? { background: "#1D4ED8", borderColor: "#1D4ED8" } : { background: "white", borderColor: "#bfdbfe" }}
               >
                 {roomTypes.includes(t) && (
                   <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="2 6 5 9 10 3"/>
                   </svg>
                 )}
-              </div>
-              <span className="text-sm text-slate-700 group-hover:text-slate-900 transition-colors">{t}</span>
+              </motion.div>
+              <span className="text-sm text-slate-700 group-hover:text-[#1E3A5F] transition-colors">{t}</span>
             </label>
           ))}
         </div>
@@ -259,11 +265,11 @@ export default function SearchResults() {
         </div>
         <div className="flex flex-wrap gap-2">
           {AMENITY_CHIPS.map((a) => (
-            <button key={a} onClick={() => toggleAmenity(a)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer
-                ${amenities.includes(a) ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"}`}>
+            <motion.button key={a} whileTap={{ scale: 0.92 }} onClick={() => toggleAmenity(a)}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer"
+              style={amenities.includes(a) ? { background: "#1D4ED8", color: "white", borderColor: "#1D4ED8" } : { background: "white", color: "#1E3A5F80", borderColor: "#bfdbfe" }}>
               {a}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
@@ -288,8 +294,8 @@ export default function SearchResults() {
         <div className="flex gap-2">
           {["Any", "Boys", "Girls", "Co-ed"].map((g) => (
             <button key={g} onClick={() => setGender(g)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer
-                ${gender === g ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"}`}>
+              className="flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer"
+              style={gender === g ? { background: "#1D4ED8", color: "white", borderColor: "#1D4ED8" } : { background: "white", color: "#1E3A5F80", borderColor: "#bfdbfe" }}>
               {g}
             </button>
           ))}
@@ -305,11 +311,11 @@ export default function SearchResults() {
           <span className="text-sm font-semibold text-slate-700">Move-in Date</span>
         </div>
         <input type="date" value={moveIn} onChange={(e) => setMoveIn(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
+          className="w-full border rounded-xl px-3 py-2 text-sm outline-none transition-all" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }} />
       </div>
 
       {/* Apply */}
-      <button className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-sm py-3 rounded-xl transition-all cursor-pointer">
+      <button className="w-full active:scale-[0.98] text-white font-bold text-sm py-3 rounded-xl transition-all cursor-pointer" style={{ background: "#1D4ED8" }}>
         Apply Filters
       </button>
     </div>
@@ -334,78 +340,30 @@ export default function SearchResults() {
         `}</style>
       </Head>
 
-      <div className="min-h-screen bg-white text-slate-900 flex flex-col">
+      <div className="min-h-screen flex flex-col" style={{ background: "#EFF6FF", color: "#1E3A5F" }}>
 
-        {/* ── NAVBAR ── */}
-        <nav className="sticky top-0 z-50 bg-white border-b border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-5 h-14 flex items-center gap-3 sm:gap-5">
-            {/* Logo */}
-            <button onClick={() => router.push("/")} className="font-serif-display text-blue-600 text-base sm:text-lg shrink-0 cursor-pointer whitespace-nowrap">
-              PG Connect
-            </button>
+        <Navbar />
 
-            {/* Center nav links — desktop */}
-            <div className="hidden md:flex items-center gap-1 ml-2">
-              {["Discover", "Saved", "Messages"].map((l) => (
-                <button key={l}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all cursor-pointer
-                    ${l === "Discover" ? "text-blue-600 border-b-2 border-blue-600 rounded-none pb-[3.5px]" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"}`}>
-                  {l}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex-1" />
-
-            {/* Search bar */}
-            <div className="flex-1 max-w-xs relative hidden sm:block">
+        {/* ── SEARCH BAR ── */}
+        <div className="bg-white border-b border-blue-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-5 py-3 flex items-center gap-2">
+            <div className="flex-1 max-w-md relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-              <input type="text" placeholder="PG Connect search..."
+              <input type="text" placeholder="Search by name or city..."
                 value={search} onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
-            </div>
-
-            {/* Icons */}
-            <div className="flex items-center gap-2">
-              <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors relative cursor-pointer">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"/>
-              </button>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold cursor-pointer shrink-0">
-                RK
-              </div>
-              {/* Mobile hamburger */}
-              <button className="md:hidden p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg" onClick={() => setMenuOpen(!menuOpen)}>
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile search */}
-          <div className="sm:hidden px-4 pb-3 flex items-center gap-2">
-            <div className="flex-1 relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <input type="text" placeholder="Search PGs..."
-                value={search} onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 transition-all" />
+                className="w-full bg-[#EFF6FF] border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
             </div>
             <button onClick={() => setFiltersOpen(true)}
-              className="flex items-center gap-1.5 border border-slate-200 bg-white text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl cursor-pointer whitespace-nowrap">
+              className="sm:hidden flex items-center gap-1.5 border border-slate-200 bg-white text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl cursor-pointer whitespace-nowrap">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
               </svg>
               Filters
             </button>
           </div>
-        </nav>
+        </div>
 
         {/* ── BODY ── */}
         <div className="flex flex-1 max-w-7xl mx-auto w-full px-4 sm:px-5 py-6 gap-7">
@@ -418,22 +376,29 @@ export default function SearchResults() {
           </aside>
 
           {/* ── MOBILE FILTER DRAWER ── */}
-          {filtersOpen && (
-            <>
-              <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setFiltersOpen(false)} />
-              <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white overflow-y-auto p-5 shadow-xl">
-                <div className="flex items-center justify-between mb-5">
-                  <span className="text-base font-bold text-slate-900">Filters</span>
-                  <button onClick={() => setFiltersOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
-                </div>
-                <FilterSidebar />
-              </div>
-            </>
-          )}
+          <AnimatePresence>
+            {filtersOpen && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 bg-black/40" onClick={() => setFiltersOpen(false)} />
+                <motion.div
+                  initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  className="fixed inset-y-0 left-0 z-50 w-72 bg-white overflow-y-auto p-5 shadow-xl">
+                  <div className="flex items-center justify-between mb-5">
+                    <span className="text-base font-bold text-[#1E3A5F]">Filters</span>
+                    <button onClick={() => setFiltersOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <FilterSidebar />
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
 
           {/* ── RESULTS ── */}
           <div className="flex-1 min-w-0">
@@ -441,7 +406,7 @@ export default function SearchResults() {
             {/* Results header */}
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F] tracking-tight">
                   Found {filtered.length} PGs in {qLocation}
                 </h1>
                 <p className="text-sm text-slate-500 mt-1">Curated living spaces for the modern student.</p>
@@ -464,31 +429,33 @@ export default function SearchResults() {
             {/* ── PROPERTY GRID ── */}
             {loading && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-                {[1, 2].map((item) => (
-                  <div key={item} className="h-[430px] rounded-2xl border border-slate-200 bg-slate-50 animate-pulse" />
+                {[1, 2, 3, 4].map((item) => (
+                  <div key={item} className="pg-skeleton h-[430px] rounded-2xl border border-slate-200" />
                 ))}
               </div>
             )}
 
             {!loading && error && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex-col">
                 {error}
               </div>
             )}
 
             {!loading && !error && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+              <Stagger className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6" staggerChildren={0.07}>
               {paginated.map((p) => (
-                <div key={p.id} className="pg-card bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                <StaggerItem key={p.id}>
+                <motion.div whileHover={{ y: -6 }} transition={{ duration: 0.25 }} className="bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer border h-full"
+                  style={{ borderColor: "#e0f2fe" }}
                   onClick={() => router.push(`/property/${p.id}`)}>
 
                   {/* Image */}
-                  <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-                    <img src={p.image} alt={p.name} loading="lazy" className="card-img w-full h-full object-cover" />
+                  <div className="relative aspect-[16/10] overflow-hidden bg-[#EFF6FF] group">
+                    <img src={p.image} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }} />
 
                     {/* Badge top-left */}
                     {p.badge && (
-                      <span className={`absolute top-3 left-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${p.badgeStyle}`}>
+                      <span className="absolute top-3 left-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full text-white" style={{ background: p.badgeColor || "#06B6D4" }}>
                         {p.badge === "VERIFIED" && (
                           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
@@ -500,15 +467,16 @@ export default function SearchResults() {
 
                     {/* Tag bottom-left */}
                     {p.tag && (
-                      <span className={`absolute bottom-3 left-3 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${p.tagStyle}`}>
+                      <span className="absolute bottom-3 left-3 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full text-white" style={{ background: p.tagColor }}>
                         {p.tag}
                       </span>
                     )}
 
                     {/* Wishlist */}
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}
                       onClick={(e) => toggleWishlist(e, p.id)}
-                      className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer"
+                      className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md cursor-pointer"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24"
                         fill={wishlist.includes(p.id) ? "#ef4444" : "none"}
@@ -516,14 +484,14 @@ export default function SearchResults() {
                         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                       </svg>
-                    </button>
+                    </motion.button>
                   </div>
 
                   {/* Card body */}
                   <div className="p-4">
                     {/* Name + rating */}
                     <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <h3 className="font-bold text-slate-900 text-base leading-snug">{p.name}</h3>
+                      <h3 className="font-bold text-base leading-snug" style={{ color: "#1E3A5F" }}>{p.name}</h3>
                       {p.isNew ? (
                         <span className="flex items-center gap-1 text-xs font-bold text-blue-500 whitespace-nowrap shrink-0">
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -532,8 +500,8 @@ export default function SearchResults() {
                           (New)
                         </span>
                       ) : p.rating ? (
-                        <span className="flex items-center gap-1 text-xs font-bold text-slate-800 whitespace-nowrap shrink-0">
-                          <span className="text-blue-500">★</span> {p.rating}
+                        <span className="flex items-center gap-1 text-xs font-bold whitespace-nowrap shrink-0" style={{ color: "#1E3A5F" }}>
+                          <span style={{ color: "#F97316" }}>★</span> {p.rating}
                         </span>
                       ) : null}
                     </div>
@@ -549,7 +517,7 @@ export default function SearchResults() {
                     {/* Amenity pills */}
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {p.amenities.map((a, i) => (
-                        <span key={a} className="flex items-center gap-1 text-[11px] text-slate-600 bg-slate-100 px-2 py-1 rounded-full">
+                        <span key={a} className="flex items-center gap-1 text-[11px] text-slate-600 bg-[#EFF6FF] px-2 py-1 rounded-full">
                           {p.amenityIcons[i] && AMENITY_ICONS[p.amenityIcons[i]]}
                           {a}
                         </span>
@@ -559,20 +527,22 @@ export default function SearchResults() {
                     {/* Price + CTA */}
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <span className="text-xl font-bold text-slate-900">{formatCurrency(p.price)}</span>
-                        <span className="text-xs text-slate-400 font-normal"> /month</span>
+                        <span className="text-xl font-bold" style={{ color: "#1E3A5F" }}>{formatCurrency(p.price)}</span>
+                        <span className="text-xs font-normal" style={{ color: "#1E3A5F80" }}> /month</span>
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); router.push(`/property/${p.id}`); }}
-                        className="border border-slate-200 hover:border-blue-500 hover:text-blue-600 text-slate-700 text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+                        className="text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap border hover:bg-blue-50"
+                        style={{ borderColor: "#bfdbfe", color: "#1D4ED8" }}
                       >
                         View Details
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
+                </StaggerItem>
               ))}
-              </div>
+              </Stagger>
             )}
 
             {!loading && !error && filtered.length === 0 && (
@@ -583,7 +553,7 @@ export default function SearchResults() {
                 <p className="text-lg font-bold text-slate-400">No PGs match your filters</p>
                 <p className="text-sm text-slate-400 mt-1">Try adjusting your budget or room type.</p>
                 <button onClick={() => { setRoomTypes([]); setAmenities([]); setBudgetActive(false); setBudgetMin(0); setBudgetMax(50000); setGender("Any"); setSearch(""); setPage(1); }}
-                  className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer">
+                  className="mt-4 text-sm font-semibold cursor-pointer" style={{ color: "#1D4ED8" }}>
                   Clear all filters
                 </button>
               </div>
@@ -596,7 +566,7 @@ export default function SearchResults() {
                   <button
                     onClick={() => setPage((current) => Math.max(1, current - 1))}
                     disabled={safePage === 1}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:text-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="15 18 9 12 15 6" />
@@ -610,7 +580,8 @@ export default function SearchResults() {
                         <button
                           key={p}
                           onClick={() => setPage(p)}
-                          className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-semibold transition-all cursor-pointer ${p === safePage ? "bg-blue-600 text-white shadow" : "text-slate-500 hover:bg-slate-100"}`}
+                          className="w-9 h-9 flex items-center justify-center rounded-full text-sm font-semibold transition-all cursor-pointer"
+                          style={p === safePage ? { background: "#1D4ED8", color: "white" } : { color: "#1E3A5F80" }}
                         >
                           {p}
                         </button>
@@ -623,7 +594,7 @@ export default function SearchResults() {
                   <button
                     onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                     disabled={safePage === totalPages}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:text-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Next
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -642,20 +613,7 @@ export default function SearchResults() {
           </div>
         </div>
 
-        {/* ── FOOTER ── */}
-        <footer className="bg-white border-t border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="font-serif-display text-sm font-bold text-slate-900">PG Connect</p>
-              <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
-            </div>
-            <div className="flex flex-wrap gap-5">
-              {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((l) => (
-                <a key={l} href="#" className="text-xs text-slate-500 hover:text-blue-600 transition-colors">{l}</a>
-              ))}
-            </div>
-          </div>
-        </footer>
+        <Footer />
       </div>
     </>
   );

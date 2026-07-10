@@ -1,6 +1,7 @@
 "use client";
 import Head from "next/head";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { userRegister } from "../api";
 
@@ -15,6 +16,9 @@ const universities = [
 
 export default function Register() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams?.get("next") || "";
+  const initialRole = searchParams?.get("role") === "owner" ? "owner" : "student";
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -24,7 +28,7 @@ export default function Register() {
 
   const [form, setForm] = useState({
     // Step 0 — Account
-    role: "student",
+    role: initialRole,
     email: "",
     password: "",
     confirmPassword: "",
@@ -79,22 +83,21 @@ export default function Register() {
     setLoading(true);
     try {
       const payload = {
-        FirstName: form.firstName,
-        LastName: form.lastName,
+        first_name: form.firstName,
+        last_name: form.lastName,
         email: form.email,
         password: form.password,
         role: form.role,
+        phone: form.phone,
       };
       if (form.role === "student") {
         payload.university = form.university;
       }
-      if (form.role === "owner") {
-        payload.city = form.propertyCity;
-      }
 
       await userRegister(payload);
       setSubmitted(true);
-      setTimeout(() => router.push("/signin"), 2000);
+      const signinUrl = nextPath ? `/signin?next=${encodeURIComponent(nextPath)}` : "/signin";
+      setTimeout(() => router.push(signinUrl), 2000);
     } catch (err) {
       console.error('Registration error:', { status: err?.status, data: err?.data, message: err?.message });
 
@@ -141,15 +144,15 @@ export default function Register() {
           <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
           <style>{`body { font-family: 'DM Sans', sans-serif; } .font-serif-display { font-family: 'DM Serif Display', serif; }`}</style>
         </Head>
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
+        <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#EFF6FF" }}>
           <div className="text-center">
-            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md" style={{ background: "#1D4ED8" }}>
               <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">You're all set!</h1>
-            <p className="text-sm text-slate-500">Your account has been created. Redirecting to sign in…</p>
+            <h1 className="text-3xl font-bold mb-2" style={{ color: "#1E3A5F" }}>You're all set!</h1>
+            <p className="text-sm" style={{ color: "#1E3A5F80" }}>Your account has been created. Redirecting to sign in…</p>
           </div>
         </div>
       </>
@@ -167,17 +170,17 @@ export default function Register() {
         <style>{`body { font-family: 'DM Sans', sans-serif; } .font-serif-display { font-family: 'DM Serif Display', serif; }`}</style>
       </Head>
 
-      <div className="min-h-screen bg-slate-100 flex flex-col">
+      <div className="min-h-screen flex flex-col" style={{ background: "#EFF6FF" }}>
 
         {/* ── NAV ── */}
-        <nav className="bg-slate-100 border-b border-slate-200">
+        <nav className="bg-white border-b border-blue-100 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 h-14 flex items-center justify-between">
-            <button onClick={() => router.push("/")} className="font-serif-display text-slate-900 text-base sm:text-lg cursor-pointer">
+            <button onClick={() => router.push("/")} className="font-bold text-base sm:text-lg cursor-pointer" style={{ color: "#1D4ED8" }}>
               PG Connect
             </button>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm" style={{ color: "#1E3A5F80" }}>
               Already have an account?{" "}
-              <button onClick={() => router.push("/signin")} className="font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">Sign in</button>
+              <button onClick={() => router.push(nextPath ? `/signin?next=${encodeURIComponent(nextPath)}` : "/signin")} className="font-semibold cursor-pointer" style={{ color: "#1D4ED8" }}>Sign in</button>
             </p>
           </div>
         </nav>
@@ -186,13 +189,13 @@ export default function Register() {
           <div className="w-full max-w-md">
 
             {/* ── CARD ── */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden" style={{ borderColor: "#bfdbfe" }}>
 
               {/* Google button (step 0 only) */}
               {step === 0 && (
                 <>
                   <div className="px-7 sm:px-9 pt-7 pb-5">
-                    <button className="w-full flex items-center justify-center gap-3 bg-slate-100 hover:bg-slate-200 active:scale-[.98] transition-all text-slate-800 font-semibold text-sm py-3 rounded-xl cursor-pointer">
+                    <button className="w-full flex items-center justify-center gap-3 bg-[#EFF6FF] hover:bg-slate-200 active:scale-[.98] transition-all text-slate-800 font-semibold text-sm py-3 rounded-xl cursor-pointer">
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -224,7 +227,7 @@ export default function Register() {
                     <div className="space-y-4">
                       {/* Heading */}
                       <div className="mb-6">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Create your account</h2>
+                        <h2 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F]">Create your account</h2>
                         <p className="text-sm text-slate-500 mt-2">Join 24,000+ students and owners on PG Connect</p>
                       </div>
 
@@ -240,18 +243,11 @@ export default function Register() {
                               key={r.value}
                               type="button"
                               onClick={() => set("role", r.value)}
-                              className={`text-left border-2 rounded-xl p-4 transition-all ${
-                                form.role === r.value
-                                  ? "border-blue-600 bg-blue-50"
-                                  : "border-slate-200 bg-white hover:border-slate-300"
-                              }`}
+                                      style={form.role === r.value ? { borderColor: "#1D4ED8", background: "#dbeafe" } : { borderColor: "#e0f2fe", background: "white" }}
+                              className="text-left border-2 rounded-xl p-4 transition-all"
                             >
-                              <p className={`text-sm font-bold ${form.role === r.value ? "text-blue-700" : "text-slate-900"}`}>
-                                {r.label}
-                              </p>
-                              <p className={`text-xs mt-1 ${form.role === r.value ? "text-blue-600" : "text-slate-500"}`}>
-                                {r.desc}
-                              </p>
+                              <p className="text-sm font-bold" style={{ color: form.role === r.value ? "#1D4ED8" : "#1E3A5F" }}>{r.label}</p>
+                              <p className="text-xs mt-1" style={{ color: form.role === r.value ? "#1D4ED8" : "#1E3A5F80" }}>{r.desc}</p>
                             </button>
                           ))}
                         </div>
@@ -265,7 +261,7 @@ export default function Register() {
                           placeholder="name@university.edu"
                           value={form.email}
                           onChange={(e) => set("email", e.target.value)}
-                          className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                          className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                         />
                         {errors.email && <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>{errors.email}</p>}
                       </div>
@@ -279,7 +275,7 @@ export default function Register() {
                             placeholder="••••••••"
                             value={form.password}
                             onChange={(e) => set("password", e.target.value)}
-                            className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all pr-11"
+                            className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all pr-11" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                           />
                           <button
                             type="button"
@@ -318,7 +314,7 @@ export default function Register() {
                             placeholder="••••••••"
                             value={form.confirmPassword}
                             onChange={(e) => set("confirmPassword", e.target.value)}
-                            className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all pr-11"
+                            className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all pr-11" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                           />
                           <button
                             type="button"
@@ -347,7 +343,7 @@ export default function Register() {
                   {step === 1 && (
                     <div className="space-y-4">
                       <div className="mb-6">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Tell us about yourself</h2>
+                        <h2 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F]">Tell us about yourself</h2>
                         <p className="text-sm text-slate-500 mt-2">This helps us personalise your experience</p>
                       </div>
 
@@ -359,7 +355,7 @@ export default function Register() {
                             placeholder="Aditya"
                             value={form.firstName}
                             onChange={(e) => set("firstName", e.target.value)}
-                            className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                            className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                           />
                           {errors.firstName && <p className="text-xs text-red-600 mt-1.5">{errors.firstName}</p>}
                         </div>
@@ -370,7 +366,7 @@ export default function Register() {
                             placeholder="Kapoor"
                             value={form.lastName}
                             onChange={(e) => set("lastName", e.target.value)}
-                            className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                            className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                           />
                           {errors.lastName && <p className="text-xs text-red-600 mt-1.5">{errors.lastName}</p>}
                         </div>
@@ -383,7 +379,7 @@ export default function Register() {
                           placeholder="98765 43210"
                           value={form.phone}
                           onChange={(e) => set("phone", e.target.value)}
-                          className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                          className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                         />
                         {errors.phone && <p className="text-xs text-red-600 mt-1.5">{errors.phone}</p>}
                       </div>
@@ -396,7 +392,7 @@ export default function Register() {
                           placeholder="University of Example"
                           value={form.university}
                           onChange={(e) => set("university", e.target.value)}
-                          className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                          className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                         />
                         {errors.university && <p className="text-xs text-red-600 mt-1.5">{errors.university}</p>}
                       </div>
@@ -406,9 +402,8 @@ export default function Register() {
                       <label className="flex items-start gap-3 cursor-pointer mt-4">
                         <div
                           onClick={() => set("agreeTerms", !form.agreeTerms)}
-                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
-                            form.agreeTerms ? "bg-blue-600 border-blue-600" : "border-slate-300 hover:border-blue-400"
-                          }`}
+                          className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer"
+                          style={form.agreeTerms ? { background: "#1D4ED8", borderColor: "#1D4ED8" } : { borderColor: "#bfdbfe" }}
                         >
                           {form.agreeTerms && (
                             <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -418,8 +413,8 @@ export default function Register() {
                         </div>
                         <span className="text-xs text-slate-500 leading-relaxed">
                           I agree to PG Connect's{" "}
-                          <a href="#" className="text-blue-600 font-semibold hover:underline">Terms of Service</a> and{" "}
-                          <a href="#" className="text-blue-600 font-semibold hover:underline">Privacy Policy</a>.
+                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline" style={{ color: "#1D4ED8" }}>Terms of Service</a> and{" "}
+                          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline" style={{ color: "#1D4ED8" }}>Privacy Policy</a>.
                           I confirm I am 18 years or older.
                         </span>
                       </label>
@@ -432,7 +427,7 @@ export default function Register() {
                   {step === 2 && (
                     <div className="space-y-4">
                       <div className="mb-6">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F]">
                           {form.role === "student" ? "Your preferences" : "Your properties"}
                         </h2>
                         <p className="text-sm text-slate-500 mt-2">Almost there — just a couple more details</p>
@@ -446,7 +441,7 @@ export default function Register() {
                               <select
                                 value={form.university}
                                 onChange={(e) => set("university", e.target.value)}
-                                className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all appearance-none"
+                                className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all appearance-none" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                               >
                                 <option value="">Enter your university</option>
                                 {universities.map(u => <option key={u}>{u}</option>)}
@@ -464,7 +459,7 @@ export default function Register() {
                               type="date"
                               value={form.moveInDate}
                               onChange={(e) => set("moveInDate", e.target.value)}
-                              className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                              className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                             />
                           </div>
 
@@ -472,7 +467,7 @@ export default function Register() {
                             <div>
                               <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Budget (₹)</label>
                               <div className="relative">
-                                <select value={form.budget} onChange={(e) => set("budget", e.target.value)} className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition-all appearance-none">
+                                <select value={form.budget} onChange={(e) => set("budget", e.target.value)} className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] outline-none transition-all appearance-none">
                                   <option value="">Any budget</option>
                                   <option>Under ₹8,000</option>
                                   <option>₹8,000 – ₹15,000</option>
@@ -485,7 +480,7 @@ export default function Register() {
                             <div>
                               <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Room Type</label>
                               <div className="relative">
-                                <select value={form.gender} onChange={(e) => set("gender", e.target.value)} className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition-all appearance-none">
+                                <select value={form.gender} onChange={(e) => set("gender", e.target.value)} className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] outline-none transition-all appearance-none">
                                   <option value="">Any</option>
                                   <option>Boys</option>
                                   <option>Girls</option>
@@ -505,13 +500,13 @@ export default function Register() {
                               placeholder="e.g. Bangalore, Delhi"
                               value={form.propertyCity}
                               onChange={(e) => set("propertyCity", e.target.value)}
-                              className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                              className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
                             />
                           </div>
                           <div>
                             <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Number of Properties</label>
                             <div className="relative">
-                              <select value={form.propertiesCount} onChange={(e) => set("propertiesCount", e.target.value)} className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition-all appearance-none">
+                              <select value={form.propertiesCount} onChange={(e) => set("propertiesCount", e.target.value)} className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] outline-none transition-all appearance-none">
                                 <option value="">Select</option>
                                 <option>1</option>
                                 <option>2–5</option>
@@ -528,9 +523,8 @@ export default function Register() {
                       <label className="flex items-start gap-3 cursor-pointer mt-6">
                         <div
                           onClick={() => set("agreeTerms", !form.agreeTerms)}
-                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
-                            form.agreeTerms ? "bg-blue-600 border-blue-600" : "border-slate-300 hover:border-blue-400"
-                          }`}
+                          className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer"
+                          style={form.agreeTerms ? { background: "#1D4ED8", borderColor: "#1D4ED8" } : { borderColor: "#bfdbfe" }}
                         >
                           {form.agreeTerms && (
                             <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -540,8 +534,8 @@ export default function Register() {
                         </div>
                         <span className="text-xs text-slate-500 leading-relaxed">
                           I agree to PG Connect's{" "}
-                          <a href="#" className="text-blue-600 font-semibold hover:underline">Terms of Service</a> and{" "}
-                          <a href="#" className="text-blue-600 font-semibold hover:underline">Privacy Policy</a>.
+                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline" style={{ color: "#1D4ED8" }}>Terms of Service</a> and{" "}
+                          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline" style={{ color: "#1D4ED8" }}>Privacy Policy</a>.
                           I confirm I am 18 years or older.
                         </span>
                       </label>
@@ -555,7 +549,7 @@ export default function Register() {
                       <button
                         type="button"
                         onClick={back}
-                        className="px-6 py-3 border border-slate-200 text-slate-600 font-semibold text-sm rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+                        className="px-6 py-3 border border-slate-200 text-slate-600 font-semibold text-sm rounded-xl hover:bg-[#EFF6FF] transition-colors cursor-pointer"
                       >
                         Back
                       </button>
@@ -564,7 +558,7 @@ export default function Register() {
                       <button
                         type="button"
                         onClick={next}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all text-white font-bold text-sm py-3.5 rounded-xl cursor-pointer"
+                        className="flex-1 active:scale-[0.98] transition-all text-white font-bold text-sm py-3.5 rounded-xl cursor-pointer" style={{ background: "#1D4ED8" }}
                       >
                         Continue
                       </button>
@@ -572,7 +566,7 @@ export default function Register() {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all text-white font-bold text-sm py-3.5 rounded-xl cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
+                        className="flex-1 active:scale-[0.98] transition-all text-white font-bold text-sm py-3.5 rounded-xl cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2" style={{ background: "#1D4ED8" }}
                       >
                         {loading ? (
                           <>
@@ -602,16 +596,16 @@ export default function Register() {
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-slate-200 bg-slate-100">
+        <footer className="border-t" style={{ background: "white", borderColor: "#e0f2fe" }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <p className="font-serif-display text-sm font-bold text-slate-900">PG Connect</p>
-              <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. All rights reserved.</p>
-            </div>
+            <p className="text-sm font-bold" style={{ color: "#1D4ED8" }}>PG Connect</p>
             <div className="flex gap-5">
-              {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((l) => (
-                <a key={l} href="#" className="text-xs text-slate-500 hover:text-slate-800 transition-colors">{l}</a>
+              {[
+                { label: "Privacy Policy", href: "/privacy" },
+                { label: "Terms of Service", href: "/terms" },
+                { label: "Cookie Policy", href: "/cookie-policy" },
+              ].map((l) => (
+                <Link key={l.label} href={l.href} className="text-xs transition-colors" style={{ color: "#1E3A5F60" }}>{l.label}</Link>
               ))}
             </div>
           </div>

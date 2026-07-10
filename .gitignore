@@ -1,0 +1,9 @@
+# Internal planning doc — not for the public repo
+PRD.md
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea

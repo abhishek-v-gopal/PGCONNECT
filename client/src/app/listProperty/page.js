@@ -1,18 +1,44 @@
 "use client";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { createProperty } from "../api";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { createProperty, getCurrentUser } from "../api";
+import { supabase } from "../../lib/supabase";
+import Navbar from "../components/Navbar";
 
 const AMENITIES = ["Wi-Fi", "AC", "Laundry", "Kitchen", "Security", "Gym"];
 const ROOM_TYPES = ["Default", "Single", "Double", "Triple", "More than 3"];
 
 export default function ListProperty() {
   const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { if (mounted) setCheckingAuth(false); return; }
+      try {
+        const res = await getCurrentUser();
+        if (mounted) setUser(res?.user || null);
+      } catch {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setCheckingAuth(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const canListProperty = user && ["owner", "admin"].includes(user.role);
 
   const [form, setForm] = useState({
     name: "",
@@ -24,6 +50,8 @@ export default function ListProperty() {
     gender: "Boys",
     managerName: "",
     managerPhone: "",
+    referral_code: searchParams?.get("ref") ?? "",
+    commission_option: "recurring",
   });
 
   const [rooms, setRooms] = useState([
@@ -72,28 +100,28 @@ export default function ListProperty() {
     setRooms((prev) => prev.filter((_, roomIndex) => roomIndex !== index));
   };
 
-  const buildPropertyPayload = () => ({
-    name: form.name.trim(),
-    tagline: form.tagline.trim(),
-    location: {
-      address: form.address.trim(),
-      city: form.city.trim(),
-      landmark: form.landmark.trim(),
-    },
-    amenities: form.amenities,
-    rooms: rooms.map((room) => ({
-      type: room.type.trim(),
+  const buildPropertyPayload = () => {
+    const fd = new FormData();
+    fd.append("name", form.name.trim());
+    fd.append("tagline", form.tagline.trim());
+    fd.append("address", form.address.trim());
+    fd.append("city", form.city.trim());
+    fd.append("landmark", form.landmark.trim());
+    fd.append("gender", form.gender);
+    fd.append("manager_name", form.managerName.trim());
+    fd.append("manager_phone", form.managerPhone.trim());
+    fd.append("amenities", form.amenities.join(","));
+    fd.append("commission_option", form.commission_option);
+    if (form.referral_code.trim()) fd.append("referral_code", form.referral_code.trim());
+    fd.append("rooms", JSON.stringify(rooms.map((room) => ({
+      type: room.type,
       price: Number(room.price),
-      totalBeds: Number(room.totalBeds),
-      availableBeds: Number(room.availableBeds || room.totalBeds),
+      total_beds: Number(room.totalBeds),
+      available_beds: Number(room.availableBeds || room.totalBeds),
       description: room.description.trim(),
-    })),
-    gender: form.gender,
-    manager: {
-      name: form.managerName.trim(),
-      phone: form.managerPhone.trim(),
-    },
-  });
+    }))));
+    return fd;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -150,43 +178,74 @@ export default function ListProperty() {
         <style>{`body { font-family: 'DM Sans', sans-serif; } .font-serif-display { font-family: 'DM Serif Display', serif; }`}</style>
       </Head>
 
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-        <nav className="sticky top-0 z-50 bg-white border-b border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 h-14 sm:h-16 flex items-center justify-between gap-4">
-            <button onClick={() => router.push("/")} className="font-serif-display text-blue-600 text-lg sm:text-xl shrink-0 cursor-pointer">PG Connect</button>
-            <div className="hidden md:flex items-center gap-8">
-              <button onClick={() => router.push("/")} className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors cursor-pointer">Properties</button>
-              <a href="#" className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">Locations</a>
-              <a href="#" className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">About</a>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => router.push("/signin")} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer">Sign In</button>
-              <button className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" onClick={() => setMenuOpen(!menuOpen)}>
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          {menuOpen && (
-            <div className="md:hidden border-t border-slate-100 bg-white px-5 py-4 flex flex-col gap-4">
-              <button onClick={() => router.push("/")} className="text-sm font-medium text-slate-500 text-left">Properties</button>
-              <a href="#" className="text-sm font-medium text-slate-500">Locations</a>
-              <a href="#" className="text-sm font-medium text-slate-500">About</a>
-            </div>
-          )}
-        </nav>
+      <div className="min-h-screen bg-[#EFF6FF] text-[#1E3A5F] flex flex-col">
+        <Navbar />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-10 sm:pt-14 pb-4">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 tracking-tight">List Your Property</h1>
-          <p className="mt-3 text-slate-500 text-sm sm:text-base max-w-lg leading-relaxed">
-            Create a new property listing that matches the API payload for <span className="font-semibold text-slate-700">/api/properties</span>.
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#1E3A5F] tracking-tight">List Your Property</h1>
+          <p className="mt-3 text-[#1E3A5F60] text-sm sm:text-base max-w-lg leading-relaxed">
+            Reach thousands of students looking for verified PG accommodation across Kerala.
           </p>
         </div>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 w-full flex-1 flex items-start justify-center">
           <div className="max-w-3xl w-full">
-            <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-8">
+            {checkingAuth && (
+              <div className="bg-white border border-[#bfdbfe] rounded-2xl p-10 shadow-sm flex items-center justify-center">
+                <svg className="w-6 h-6 animate-spin text-[#1D4ED8]" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+              </div>
+            )}
+
+            {!checkingAuth && !user && (
+              <div className="bg-white border border-[#bfdbfe] rounded-2xl p-8 sm:p-10 shadow-sm text-center">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: "#1D4ED8" }}>
+                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-[#1E3A5F]">Create a free account to list your PG</h2>
+                <p className="mt-2 text-sm text-[#1E3A5F80] max-w-sm mx-auto">
+                  We ask owners to sign in so you can manage your listing, track inquiries, and receive payouts — it only takes a minute.
+                </p>
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    onClick={() => router.push("/register?role=owner&next=/listProperty")}
+                    className="w-full sm:w-auto bg-[#F97316] hover:bg-[#ea6c0a] text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Create Account
+                  </button>
+                  <button
+                    onClick={() => router.push("/signin?next=/listProperty")}
+                    className="w-full sm:w-auto border border-[#bfdbfe] text-[#1E3A5F] text-sm font-semibold px-6 py-3 rounded-xl hover:border-[#1D4ED8] hover:text-[#1D4ED8] transition-colors cursor-pointer"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!checkingAuth && user && !canListProperty && (
+              <div className="bg-white border border-[#bfdbfe] rounded-2xl p-8 sm:p-10 shadow-sm text-center">
+                <h2 className="text-xl font-bold text-[#1E3A5F]">This account can't list properties</h2>
+                <p className="mt-2 text-sm text-[#1E3A5F80] max-w-sm mx-auto">
+                  You're signed in as a {user.role}. Only property owner accounts can list a PG — sign in with an owner account, or create a new one.
+                </p>
+                <div className="mt-6">
+                  <button
+                    onClick={() => router.push("/register?role=owner&next=/listProperty")}
+                    className="bg-[#F97316] hover:bg-[#ea6c0a] text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Create Owner Account
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!checkingAuth && canListProperty && (
+            <form onSubmit={handleSubmit} className="bg-white border border-[#bfdbfe] rounded-2xl p-6 sm:p-8 shadow-sm space-y-8">
               {submitError && (
                 <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-medium px-4 py-2.5 rounded-xl">
                   {submitError}
@@ -195,68 +254,68 @@ export default function ListProperty() {
 
               <section className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Property Name</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Property Name</label>
                   <input
                     type="text"
                     placeholder="Nirmal Jyothi"
                     value={form.name}
                     onChange={(e) => updateField("name", e.target.value)}
                     required
-                    className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                    className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Tagline</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Tagline</label>
                   <input
                     type="text"
                     placeholder="Modern co-living in Koramangala"
                     value={form.tagline}
                     onChange={(e) => updateField("tagline", e.target.value)}
-                    className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                    className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Address</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Address</label>
                     <input
                       type="text"
                       placeholder="5th Block"
                       value={form.address}
                       onChange={(e) => updateField("address", e.target.value)}
                       required
-                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                      className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">City</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">City</label>
                     <input
                       type="text"
                       placeholder="Chanaganassery"
                       value={form.city}
                       onChange={(e) => updateField("city", e.target.value)}
                       required
-                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                      className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Landmark</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Landmark</label>
                   <input
                     type="text"
                     placeholder="Near Forum Mall"
                     value={form.landmark}
                     onChange={(e) => updateField("landmark", e.target.value)}
-                    className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                    className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                   />
                 </div>
               </section>
 
               <section className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Gender</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-3">Gender</label>
                   <div className="grid grid-cols-3 gap-2.5">
                     {["Boys", "Girls", "Co-ed"].map((option) => {
                       const active = form.gender === option;
@@ -265,7 +324,7 @@ export default function ListProperty() {
                           key={option}
                           type="button"
                           onClick={() => updateField("gender", option)}
-                          className={`rounded-xl border px-4 py-3 text-sm font-medium transition-all text-left ${active ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`}
+                          className={`rounded-xl border px-4 py-3 text-sm font-medium transition-all text-left ${active ? "border-[#1D4ED8] bg-[#dbeafe] text-[#1D4ED8]" : "border-[#bfdbfe] bg-white text-[#1E3A5F] hover:border-[#bfdbfe]"}`}
                         >
                           {option}
                         </button>
@@ -275,7 +334,7 @@ export default function ListProperty() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Amenities</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-3">Amenities</label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {AMENITIES.map((amenity) => {
                       const checked = form.amenities.includes(amenity);
@@ -284,9 +343,9 @@ export default function ListProperty() {
                           key={amenity}
                           type="button"
                           onClick={() => toggleAmenity(amenity)}
-                          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-left transition-all cursor-pointer ${checked ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`}
+                          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-left transition-all cursor-pointer ${checked ? "border-[#1D4ED8] bg-[#dbeafe] text-[#1D4ED8]" : "border-[#bfdbfe] bg-white text-[#1E3A5F] hover:border-[#bfdbfe]"}`}
                         >
-                          <div className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-all ${checked ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
+                          <div className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-all ${checked ? "bg-[#1D4ED8] border-[#1D4ED8]" : "border-[#bfdbfe]"}`}>
                             {checked && (
                               <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="2 6 5 9 10 3" />
@@ -303,14 +362,14 @@ export default function ListProperty() {
 
               <section className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Room Details</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-3">Room Details</label>
                   <div className="space-y-4">
                     {rooms.map((room, index) => (
-                      <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5 space-y-4">
+                      <div key={index} className="rounded-2xl border border-[#bfdbfe] bg-[#EFF6FF] p-4 sm:p-5 space-y-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <p className="text-sm font-semibold text-slate-900">Room {index + 1}</p>
-                            <p className="text-xs text-slate-500">Add pricing and capacity for this room type.</p>
+                            <p className="text-sm font-semibold text-[#1E3A5F]">Room {index + 1}</p>
+                            <p className="text-xs text-[#1E3A5F60]">Add pricing and capacity for this room type.</p>
                           </div>
                           {rooms.length > 1 && (
                             <button
@@ -329,7 +388,7 @@ export default function ListProperty() {
                             <select
                               value={room.type}
                               onChange={(e) => updateRoom(index, "type", e.target.value)}
-                              className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition-all"
+                              className="w-full bg-white border border-[#bfdbfe] focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] outline-none transition-all"
                             >
                               {ROOM_TYPES.map((type) => (
                                 <option key={type} value={type}>{type}</option>
@@ -345,7 +404,7 @@ export default function ListProperty() {
                               onChange={(e) => updateRoom(index, "price", e.target.value)}
                               min="0"
                               required
-                              className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                              className="w-full bg-white border border-[#bfdbfe] focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                             />
                           </div>
                           <div>
@@ -357,7 +416,7 @@ export default function ListProperty() {
                               onChange={(e) => updateRoom(index, "totalBeds", e.target.value)}
                               min="1"
                               required
-                              className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                              className="w-full bg-white border border-[#bfdbfe] focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                             />
                           </div>
                           <div>
@@ -368,7 +427,7 @@ export default function ListProperty() {
                               value={room.availableBeds}
                               onChange={(e) => updateRoom(index, "availableBeds", e.target.value)}
                               min="0"
-                              className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                              className="w-full bg-white border border-[#bfdbfe] focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                             />
                           </div>
                         </div>
@@ -380,7 +439,7 @@ export default function ListProperty() {
                             placeholder={index === 0 ? "Twin beds" : "Add room details"}
                             value={room.description}
                             onChange={(e) => updateRoom(index, "description", e.target.value)}
-                            className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all resize-none"
+                            className="w-full bg-white border border-[#bfdbfe] focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all resize-none"
                           />
                         </div>
                       </div>
@@ -390,7 +449,7 @@ export default function ListProperty() {
                   <button
                     type="button"
                     onClick={addRoom}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-blue-400 hover:text-blue-700 transition-colors"
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-dashed border-[#bfdbfe] bg-white px-4 py-2.5 text-sm font-semibold text-[#1E3A5F] hover:border-blue-400 hover:text-[#1D4ED8] transition-colors"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 5v14" />
@@ -402,38 +461,72 @@ export default function ListProperty() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Manager Name</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Manager Name</label>
                     <input
                       type="text"
                       placeholder="Rajesh Kumar"
                       value={form.managerName}
                       onChange={(e) => updateField("managerName", e.target.value)}
                       required
-                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                      className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Manager Phone</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Manager Phone</label>
                     <input
                       type="tel"
                       placeholder="+91 9876543210"
                       value={form.managerPhone}
                       onChange={(e) => updateField("managerPhone", e.target.value)}
-                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                      className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                     />
                   </div>
                 </div>
               </section>
 
-              <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+              {/* Referral section */}
+              <section className="space-y-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60]">Referral (Optional)</h3>
+                <div className="bg-[#dbeafe] border border-blue-100 rounded-xl p-4">
+                  <p className="text-xs text-[#1D4ED8] font-medium mb-3">
+                    Were you referred by a student? Enter their code to link them to this listing — they'll earn 2% commission on every booking.
+                  </p>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Referral Code</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. ABC12345"
+                      value={form.referral_code}
+                      onChange={(e) => updateField("referral_code", e.target.value.toUpperCase())}
+                      className="w-full bg-white border border-blue-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all font-mono tracking-widest"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Commission Type for Referrer</label>
+                    <div className="flex gap-3">
+                      {[
+                        { value: "recurring", label: "Recurring (2% monthly)" },
+                        { value: "one-time", label: "One-Time (first booking only)" },
+                      ].map((opt) => (
+                        <label key={opt.value} className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-xl border text-xs font-medium transition-all ${form.commission_option === opt.value ? "border-blue-500 bg-[#dbeafe] text-[#1D4ED8]" : "border-[#bfdbfe] text-[#1E3A5F80] hover:border-blue-300"}`}>
+                          <input type="radio" name="commission_option" value={opt.value} checked={form.commission_option === opt.value} onChange={() => updateField("commission_option", opt.value)} className="sr-only" />
+                          {opt.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div className="flex items-center justify-between gap-4 rounded-xl bg-[#EFF6FF] border border-[#bfdbfe] px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Ready to create this property?</p>
-                  <p className="text-xs text-slate-500 mt-0.5">This will post a new record to the properties API and keep the pending flow working.</p>
+                  <p className="text-sm font-semibold text-[#1E3A5F]">Ready to list your property?</p>
+                  <p className="text-xs text-[#1E3A5F60] mt-0.5">Your listing will be reviewed by the team before going live. Usually takes 1-2 business days.</p>
                 </div>
                 <button
                   type="submit"
                   disabled={submitting || submitted}
-                  className="shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all text-white font-bold text-sm px-5 py-3 rounded-xl cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
+                  className="shrink-0 bg-[#1D4ED8] hover:bg-[#1D4ED8] active:scale-[0.98] transition-all text-white font-bold text-sm px-5 py-3 rounded-xl cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
                 >
                   {submitting ? (
                     <>
@@ -447,18 +540,24 @@ export default function ListProperty() {
                 </button>
               </div>
             </form>
+            )}
           </div>
         </main>
 
-        <footer className="bg-white border-t border-slate-200 mt-10">
+        <footer className="bg-white border-t border-[#bfdbfe] mt-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <p className="font-serif-display text-base font-bold text-slate-900">PG Connect</p>
+              <p className="font-serif-display text-base font-bold text-[#1E3A5F]">PG Connect</p>
               <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
             </div>
             <div className="flex flex-wrap gap-5">
-              {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((label) => (
-                <a key={label} href="#" className="text-xs text-slate-500 hover:text-blue-600 transition-colors">{label}</a>
+              {[
+                { label: "Privacy Policy", href: "/privacy" },
+                { label: "Terms of Service", href: "/terms" },
+                { label: "Help Center", href: "/help" },
+                { label: "Contact Us", href: "/contact" },
+              ].map((l) => (
+                <Link key={l.label} href={l.href} className="text-xs text-[#1E3A5F60] hover:text-[#1D4ED8] transition-colors">{l.label}</Link>
               ))}
             </div>
           </div>

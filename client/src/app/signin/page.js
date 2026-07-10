@@ -1,11 +1,16 @@
 "use client";
 import Head from "next/head";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { userLogin } from "../api";
+import Navbar from "../components/Navbar";
 
 export default function SignIn() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams?.get("next") || "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -14,76 +19,22 @@ export default function SignIn() {
 
   const handleSignIn = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Please fill in all fields.");
-      return;
-    }
+    if (!email || !password) { setError("Please fill in all fields."); return; }
     setError("");
     setLoading(true);
     try {
-      const data = {
-        email,
-        password,
-      };
-
-      console.log('[DEBUG] Attempting login with:', { email: data.email, passwordLength: data.password.length });
-      const response = await userLogin(data);
-
-      // Store auth data
-      if (response?.token && response?.user) {
-        localStorage.setItem("auth_token", response.token);
-        localStorage.setItem("user_data", JSON.stringify(response.user));
-      }
-
-      // Role-based redirect
-      setTimeout(() => {
-        setLoading(false);
-        const user = response?.user;
-        const role = user?.role;
-
-        if (role === "student") {
-          router.push("/propertys");
-        } else if (role === "owner") {
-          // Check if owner has pending verification
-          const properties =user?.properties || [];
-          const listing = JSON.parse(localStorage.getItem("pg_listing") || "null");
-          if (properties.length > 0 && !properties[0].isVerified) {
-            router.push("/listingPending");
-          } else if (user?.properties?.length > 0 && user?.properties[0]?.isVerified) {
-            // Owner has properties → go to dashboard
-            router.push("/ownersDashboard");
-          } else {
-            // No properties → go to listing page
-            router.push("/listProperty");
-          }
-        } else if (role === "admin") {
-          router.push("/adminDashboard");
-        } else {
-          // Fallback
-          router.push("/");
-        }
-      }, 500);
-    } catch (error) {
+      const response = await userLogin({ email, password });
       setLoading(false);
-      console.error('[DEBUG] Login error caught:', {
-        status: error?.response?.status,
-        errorData: error?.response?.data,
-        message: error?.message
-      });
-      
-      if (error?.response?.status === 401) {
-        setError("Invalid email or password. Check console for more details.");
-        return;
-      }
-
-      setError(`Login failed: ${error?.response?.data?.message || error?.message || 'Please try again.'}`);
+      if (nextPath) { router.push(nextPath); return; }
+      const role = response?.user?.role;
+      if (role === "student") { router.push("/propertys"); }
+      else if (role === "owner") { router.push("/ownersDashboard"); }
+      else if (role === "admin") { router.push("/admin"); }
+      else { router.push("/"); }
+    } catch (err) {
+      setLoading(false);
+      setError(`Login failed: ${err?.message || 'Please try again.'}`);
     }
-  };
-
-  const handleGoogle = () => {
-    // Google sign-in would call userLogin with OAuth token
-    // For now, show a placeholder message
-    setError("Google sign-in coming soon");
   };
 
   return (
@@ -91,49 +42,45 @@ export default function SignIn() {
       <Head>
         <title>Sign In — PG Connect</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
-        <style>{`body { font-family: 'DM Sans', sans-serif; } .font-serif-display { font-family: 'DM Serif Display', serif; }`}</style>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <style>{`body { font-family: 'Plus Jakarta Sans', sans-serif; background: #EFF6FF; }`}</style>
       </Head>
 
-      <div className="min-h-screen bg-slate-100 flex flex-col">
+      <div className="min-h-screen flex flex-col" style={{ background: "#EFF6FF" }}>
 
-        {/* Nav */}
-        <nav className="bg-slate-100 border-b border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 h-14 flex items-center justify-between">
-            <button onClick={() => router.push("/")} className="font-serif-display text-slate-900 text-base sm:text-lg cursor-pointer">
-              PG Connect
-            </button>
-            <div className="hidden sm:flex items-center gap-8">
-              {["Properties", "Life", "Contact"].map((l) => (
-                <a key={l} href="#" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">{l}</a>
-              ))}
-            </div>
-            <button onClick={() => router.push("/")} className="p-1.5 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-        </nav>
+        <Navbar />
 
         {/* Main */}
         <main className="flex-1 flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-7 sm:p-9">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-md">
+            <div className="bg-white rounded-2xl shadow-lg border p-7 sm:p-9" style={{ borderColor: "#bfdbfe" }}>
 
               {/* Heading */}
               <div className="text-center mb-7">
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Welcome Back</h1>
-                <p className="mt-2 text-sm text-slate-500">Sign in to your PG Connect sanctuary</p>
+                <motion.div
+                  initial={{ scale: 0.6, rotate: -8, opacity: 0 }}
+                  animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
+                  style={{ background: "#1D4ED8" }}>
+                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                </motion.div>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: "#1E3A5F" }}>Welcome Back</h1>
+                <p className="mt-2 text-sm" style={{ color: "#1E3A5F80" }}>Sign in to your PG Connect account</p>
               </div>
 
               {/* Google */}
               <button
-                onClick={handleGoogle}
+                onClick={() => setError("Google sign-in coming soon")}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-3 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] transition-all text-slate-800 font-semibold text-sm py-3 rounded-xl mb-5 cursor-pointer disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-3 transition-all font-semibold text-sm py-3 rounded-xl mb-5 cursor-pointer disabled:opacity-60 border"
+                style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -144,36 +91,44 @@ export default function SignIn() {
                 Continue with Google
               </button>
 
-              {/* Divider */}
               <div className="flex items-center gap-3 mb-5">
-                <div className="flex-1 h-px bg-slate-200" />
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">Or with email</span>
-                <div className="flex-1 h-px bg-slate-200" />
+                <div className="flex-1 h-px" style={{ background: "#e0f2fe" }} />
+                <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#1E3A5F60" }}>Or with email</span>
+                <div className="flex-1 h-px" style={{ background: "#e0f2fe" }} />
               </div>
 
-              {/* Form */}
               <form onSubmit={handleSignIn} className="space-y-4">
-                {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-medium px-4 py-2.5 rounded-xl">
-                    {error}
-                  </div>
-                )}
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      animate={{ opacity: 1, height: "auto", marginBottom: 0 }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-red-50 border border-red-200 text-red-600 text-xs font-medium px-4 py-2.5 rounded-xl overflow-hidden"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Email Address</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: "#1E3A5F80" }}>Email Address</label>
                   <input
                     type="email"
                     placeholder="name@university.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                    className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all"
+                    style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "#1D4ED8"; e.currentTarget.style.background = "white"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = "#bfdbfe"; e.currentTarget.style.background = "#EFF6FF"; }}
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Password</label>
-                    <a href="#" className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">Forgot Password?</a>
+                    <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#1E3A5F80" }}>Password</label>
+                    <a href="#" className="text-xs font-semibold transition-colors" style={{ color: "#F97316" }}>Forgot Password?</a>
                   </div>
                   <div className="relative">
                     <input
@@ -181,33 +136,37 @@ export default function SignIn() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-slate-100 border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all pr-11"
+                      className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all pr-11"
+                      style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }}
+                      onFocus={e => { e.currentTarget.style.borderColor = "#1D4ED8"; e.currentTarget.style.background = "white"; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = "#bfdbfe"; e.currentTarget.style.background = "#EFF6FF"; }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                    >
+                    <button type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors cursor-pointer" style={{ color: "#1E3A5F60" }}>
                       {showPassword ? (
-                        <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
                           <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
                           <line x1="1" y1="1" x2="23" y2="23" />
                         </svg>
                       ) : (
-                        <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                          <circle cx="12" cy="12" r="3" />
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
                         </svg>
                       )}
                     </button>
                   </div>
                 </div>
 
-                <button
+                <motion.button
+                  whileHover={{ scale: loading ? 1 : 1.02 }}
+                  whileTap={{ scale: loading ? 1 : 0.97 }}
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all text-white font-bold text-sm py-3.5 rounded-xl mt-1 cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
+                  className="w-full transition-colors text-white font-bold text-sm py-3.5 rounded-xl mt-1 cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                  style={{ background: "#1D4ED8" }}
+                  onMouseEnter={e => !loading && (e.currentTarget.style.background = "#1e40af")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "#1D4ED8")}
                 >
                   {loading ? (
                     <>
@@ -218,36 +177,35 @@ export default function SignIn() {
                       Signing in…
                     </>
                   ) : "Sign In"}
-                </button>
+                </motion.button>
               </form>
 
-              <p className="text-center text-sm text-slate-500 mt-5">
+              <p className="text-center text-sm mt-5" style={{ color: "#1E3A5F80" }}>
                 Don&apos;t have an account?{" "}
-                <a href="/register  " className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">Sign Up</a>
+                <a href={nextPath ? `/register?next=${encodeURIComponent(nextPath)}` : "/register"} className="font-semibold transition-colors" style={{ color: "#1D4ED8" }}>Sign Up</a>
               </p>
             </div>
 
-            {/* Security note */}
-            <p className="flex items-center justify-center gap-1.5 text-xs text-slate-400 mt-5">
+            <p className="flex items-center justify-center gap-1.5 text-xs mt-5" style={{ color: "#1E3A5F60" }}>
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
               Secured by PG Connect Authentication
             </p>
-          </div>
+          </motion.div>
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-slate-200 bg-slate-100">
+        <footer className="border-t" style={{ background: "white", borderColor: "#e0f2fe" }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <p className="font-serif-display text-sm font-bold text-slate-900">PG Connect</p>
-              <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. All rights reserved.</p>
-            </div>
+            <p className="text-xs" style={{ color: "#1E3A5F60" }}>&copy; {new Date().getFullYear()} PG Connect. All rights reserved.</p>
             <div className="flex gap-5">
-              {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((l) => (
-                <a key={l} href="#" className="text-xs text-slate-500 hover:text-slate-800 transition-colors">{l}</a>
+              {[
+                { label: "Privacy Policy", href: "/privacy" },
+                { label: "Terms of Service", href: "/terms" },
+                { label: "Cookie Policy", href: "/cookie-policy" },
+              ].map((l) => (
+                <Link key={l.label} href={l.href} className="text-xs transition-colors" style={{ color: "#1E3A5F60" }}>{l.label}</Link>
               ))}
             </div>
           </div>

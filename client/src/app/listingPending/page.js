@@ -1,20 +1,19 @@
 "use client";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getPropertyById } from "../api";
+import Navbar from "../components/Navbar";
 
 export default function ListingPending() {
   const router = useRouter();
   const [listing, setListing] = useState(null);
   const [property, setProperty] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const propertyId =
-    listing?.apiResponse?.property?._id ||
     listing?.apiResponse?.property?.id ||
-    listing?.apiResponse?._id ||
     listing?.apiResponse?.id ||
     listing?.propertyId ||
     listing?.id ||
@@ -55,37 +54,28 @@ export default function ListingPending() {
   }, [propertyId]);
 
   useEffect(() => {
-    const verified = Boolean(property?.isVerified || property?.status === "verified" || listing?.verified);
+    const verified = Boolean(property?.is_verified || property?.status === "verified" || listing?.verified);
     if (!verified) return;
 
-    const target = property?._id || propertyId ? `/property/${property?._id || propertyId}` : "/propertys";
+    const target = propertyId ? `/property/${propertyId}` : "/propertys";
     const timer = setTimeout(() => {
       router.replace(target);
     }, 1600);
 
     return () => clearTimeout(timer);
-  }, [listing?.verified, property?.isVerified, property?.status, property?._id, propertyId, router]);
+  }, [listing?.verified, property?.is_verified, property?.status, propertyId, router]);
 
   const submittedAt = listing?.submittedAt
     ? new Date(listing.submittedAt).toLocaleDateString("en-IN", {
         day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
       })
-    : property?.createdAt
-      ? new Date(property.createdAt).toLocaleDateString("en-IN", {
+    : property?.created_at
+      ? new Date(property.created_at).toLocaleDateString("en-IN", {
           day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
         })
       : null;
 
-  const isVerified = Boolean(property?.isVerified || property?.status === "verified" || listing?.verified);
-
-  // DEV helper — simulate verification
-  const simulateVerify = () => {
-    const data = JSON.parse(localStorage.getItem("pg_listing") || "{}");
-    data.verified = true;
-    localStorage.setItem("pg_listing", JSON.stringify(data));
-    setListing(data);
-    setProperty((prev) => (prev ? { ...prev, isVerified: true, status: "verified" } : prev));
-  };
+  const isVerified = Boolean(property?.is_verified || property?.status === "verified" || listing?.verified);
 
   const clearAndRelist = () => {
     localStorage.removeItem("pg_listing");
@@ -117,33 +107,9 @@ export default function ListingPending() {
         `}</style>
       </Head>
 
-      <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="min-h-screen bg-[#EFF6FF] flex flex-col">
 
-        {/* Nav */}
-        <nav className="sticky top-0 z-50 bg-white border-b border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 h-14 sm:h-16 flex items-center justify-between gap-4">
-            <button onClick={() => router.push("/")} className="font-serif-display text-blue-600 text-lg sm:text-xl shrink-0 cursor-pointer">PG Connect</button>
-            <div className="hidden md:flex items-center gap-8">
-              <button onClick={() => router.push("/")} className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors cursor-pointer">Properties</button>
-              <a href="#" className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">Locations</a>
-              <a href="#" className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">About</a>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => router.push("/signin")} className="text-sm font-semibold text-blue-600 hover:opacity-75 transition-opacity cursor-pointer">Sign In</button>
-              <button className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" onClick={() => setMenuOpen(!menuOpen)}>
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          {menuOpen && (
-            <div className="md:hidden border-t border-slate-100 bg-white px-5 py-4 flex flex-col gap-4">
-              <button onClick={() => router.push("/")} className="text-sm font-medium text-slate-500 text-left">Properties</button>
-              <a href="#" className="text-sm font-medium text-slate-500">Locations</a>
-            </div>
-          )}
-        </nav>
+        <Navbar />
 
         {/* Main */}
         <main className="flex-1 flex items-center justify-center px-4 py-12 sm:py-16">
@@ -160,7 +126,7 @@ export default function ListingPending() {
             </div>
 
             {/* Status card */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-white border border-[#bfdbfe] rounded-2xl shadow-sm overflow-hidden">
 
               {/* Amber top bar */}
               <div className={`${isVerified ? "bg-green-500" : "bg-amber-400"} h-1.5 w-full`} />
@@ -175,8 +141,8 @@ export default function ListingPending() {
                         </svg>
                         Verified Property
                       </span>
-                      <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Your property is verified</h1>
-                      <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+                      <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F] tracking-tight">Your property is verified</h1>
+                      <p className="mt-2 text-sm text-[#1E3A5F60] leading-relaxed">
                         We’re taking you to the property page now.
                       </p>
                     </>
@@ -188,9 +154,9 @@ export default function ListingPending() {
                         </svg>
                         Pending Verification
                       </span>
-                      <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Your listing is under review</h1>
-                      <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-                        Our team is reviewing your property. We'll verify and publish it within <strong className="text-slate-700">48 hours</strong>.
+                      <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F] tracking-tight">Your listing is under review</h1>
+                      <p className="mt-2 text-sm text-[#1E3A5F60] leading-relaxed">
+                        Our team is reviewing your property. We'll verify and publish it within <strong className="text-[#1E3A5F]">48 hours</strong>.
                       </p>
                     </>
                   )}
@@ -198,34 +164,34 @@ export default function ListingPending() {
 
                 {/* Listing summary */}
                 {(listing || property) && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 space-y-3">
+                  <div className="bg-[#EFF6FF] border border-[#bfdbfe] rounded-xl p-4 mb-6 space-y-3">
                     <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Your Submission</p>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-900 truncate">{property?.name || listing?.propertyName}</p>
-                        <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                        <p className="font-semibold text-[#1E3A5F] truncate">{property?.name || listing?.propertyName}</p>
+                        <p className="text-xs text-[#1E3A5F60] mt-0.5 flex items-center gap-1">
                           <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                           </svg>
                           {property
-                            ? [property.location?.address, property.location?.city, property.location?.landmark].filter(Boolean).join(", ")
+                            ? [property.address, property.city, property.landmark].filter(Boolean).join(", ")
                             : listing.location}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-blue-600 text-sm">₹{Number(property?.startingPrice || listing?.pricePerBed || 0).toLocaleString("en-IN")}/bed</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{property?.totalBeds || listing?.totalBeds || 0} beds</p>
+                        <p className="font-bold text-[#1D4ED8] text-sm">₹{Number(property?.starting_price || listing?.pricePerBed || 0).toLocaleString("en-IN")}/bed</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{property?.total_beds || listing?.totalBeds || 0} beds</p>
                       </div>
                     </div>
                     {((property?.amenities?.length > 0) || listing?.amenities?.length > 0) && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {(property?.amenities || listing?.amenities || []).map((a) => (
-                          <span key={a} className="bg-blue-50 text-blue-600 text-[10px] font-semibold px-2 py-0.5 rounded-md">{a}</span>
+                          <span key={a} className="bg-[#dbeafe] text-[#1D4ED8] text-[10px] font-semibold px-2 py-0.5 rounded-md">{a}</span>
                         ))}
                       </div>
                     )}
                     {submittedAt && (
-                      <p className="text-[11px] text-slate-400 pt-1 border-t border-slate-200">Submitted on {submittedAt}</p>
+                      <p className="text-[11px] text-slate-400 pt-1 border-t border-[#bfdbfe]">Submitted on {submittedAt}</p>
                     )}
                   </div>
                 )}
@@ -240,7 +206,7 @@ export default function ListingPending() {
                   ].map((step, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold
-                        ${step.done ? "bg-green-500 text-white" : step.active ? "bg-amber-400 text-white" : "bg-slate-200 text-slate-400"}`}>
+                        ${step.done ? "bg-green-500 text-white" : step.active ? "bg-amber-400 text-white" : "bg-[#dbeafe] text-slate-400"}`}>
                         {step.done ? (
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12" />
@@ -260,8 +226,8 @@ export default function ListingPending() {
                 </div>
 
                 {/* What's next */}
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
-                  <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">What happens next?</p>
+                <div className="bg-[#dbeafe] border border-blue-100 rounded-xl p-4 mb-6">
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#1D4ED8] mb-2">What happens next?</p>
                   <ul className="space-y-1.5">
                     {[
                       "You'll receive an email confirmation shortly.",
@@ -282,27 +248,16 @@ export default function ListingPending() {
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => router.push(isVerified && propertyId ? `/property/${propertyId}` : "/")}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
+                    className="flex-1 bg-[#1D4ED8] hover:bg-[#1D4ED8] active:scale-[0.98] text-white text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
                   >
                     {isVerified && propertyId ? "View Property" : "Browse Properties"}
                   </button>
                   <button
                     onClick={clearAndRelist}
-                    className="flex-1 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
+                    className="flex-1 border border-[#bfdbfe] hover:border-[#bfdbfe] bg-white text-[#1E3A5F] text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
                   >
                     {isVerified ? "Create New Listing" : "Edit Submission"}
                   </button>
-                </div>
-
-                {/* Dev helper */}
-                <div className="mt-5 pt-5 border-t border-slate-100">
-                  <p className="text-[10px] text-slate-300 uppercase tracking-widest text-center mb-2">Dev Tools</p>
-                  <button
-                      onClick={simulateVerify}
-                      className="w-full border border-dashed border-slate-200 text-slate-400 hover:text-green-600 hover:border-green-300 text-xs font-medium py-2 rounded-xl transition-all cursor-pointer"
-                    >
-                      Simulate Verification ✓ (dev only)
-                    </button>
                 </div>
 
               </div>
@@ -318,15 +273,20 @@ export default function ListingPending() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-slate-200">
+        <footer className="bg-white border-t border-[#bfdbfe]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <p className="font-serif-display text-base font-bold text-slate-900">PG Connect</p>
+              <p className="font-serif-display text-base font-bold text-[#1E3A5F]">PG Connect</p>
               <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
             </div>
             <div className="flex flex-wrap gap-5">
-              {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((l) => (
-                <a key={l} href="#" className="text-xs text-slate-500 hover:text-blue-600 transition-colors">{l}</a>
+              {[
+                { label: "Privacy Policy", href: "/privacy" },
+                { label: "Terms of Service", href: "/terms" },
+                { label: "Help Center", href: "/help" },
+                { label: "Contact Us", href: "/contact" },
+              ].map((l) => (
+                <Link key={l.label} href={l.href} className="text-xs text-[#1E3A5F60] hover:text-[#1D4ED8] transition-colors">{l.label}</Link>
               ))}
             </div>
           </div>

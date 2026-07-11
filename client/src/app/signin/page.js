@@ -27,7 +27,7 @@ export default function SignIn() {
       setLoading(false);
       if (nextPath) { router.push(nextPath); return; }
       const role = response?.user?.role;
-      if (role === "student") { router.push("/propertys"); }
+      if (role === "student") { router.push("/referrerDashboard"); }
       else if (role === "owner") { router.push("/ownersDashboard"); }
       else if (role === "admin") { router.push("/admin"); }
       else { router.push("/"); }

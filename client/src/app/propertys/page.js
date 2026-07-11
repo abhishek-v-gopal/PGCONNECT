@@ -74,6 +74,7 @@ const mapProperty = (property) => {
     badgeColor: "#06B6D4",
     tag: availableBeds > 0 ? `${availableBeds} Beds Left` : "Full",
     tagColor: availableBeds > 0 ? "#F97316" : "#64748b",
+    availableBeds,
     amenities: Array.isArray(property?.amenities) ? property.amenities : [],
     amenityIcons: Array.isArray(property?.amenities) ? property.amenities.map(getAmenityIconKey) : [],
     roomType: room?.type || (rooms.length > 1 ? "Multiple" : "Single"),
@@ -128,7 +129,7 @@ export default function SearchResults() {
       try {
         setLoading(true);
         setError("");
-        const response = await getAllProperties();
+        const response = await getAllProperties({ limit: 100 });
         console.log(response);
         
         const list = Array.isArray(response?.properties) ? response.properties.map(mapProperty) : [];
@@ -161,6 +162,8 @@ export default function SearchResults() {
       if (budgetActive && (p.price < budgetMin || p.price > budgetMax)) return false;
       if (roomTypes.length > 0 && !roomTypes.includes(p.roomType)) return false;
       if (gender !== "Any" && p.gender !== "Co-ed" && p.gender !== gender) return false;
+      if (amenities.length > 0 && !amenities.every((a) => p.amenities.includes(a))) return false;
+      if (moveIn && p.availableBeds <= 0) return false;
       const searchValue = search.toLowerCase();
       if (searchValue && !p.name.toLowerCase().includes(searchValue) && !p.location.toLowerCase().includes(searchValue)) return false;
       return true;
@@ -315,7 +318,7 @@ export default function SearchResults() {
       </div>
 
       {/* Apply */}
-      <button className="w-full active:scale-[0.98] text-white font-bold text-sm py-3 rounded-xl transition-all cursor-pointer" style={{ background: "#1D4ED8" }}>
+      <button onClick={() => setFiltersOpen(false)} className="w-full active:scale-[0.98] text-white font-bold text-sm py-3 rounded-xl transition-all cursor-pointer" style={{ background: "#1D4ED8" }}>
         Apply Filters
       </button>
     </div>

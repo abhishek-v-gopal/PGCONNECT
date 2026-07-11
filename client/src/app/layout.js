@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import PwaInstall from "./components/PwaInstall";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +49,21 @@ export const metadata = {
     description: "Compare verified PG listings, amenities, pricing, and availability in one place.",
   },
   category: "real-estate",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "PG Connect",
+  },
+  icons: {
+    icon: [{ url: "/icon-192x192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#1D4ED8",
 };
 
 export default function RootLayout({ children }) {
@@ -56,7 +72,10 @@ export default function RootLayout({ children }) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>{children}</body>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        {children}
+        <PwaInstall />
+      </body>
     </html>
   );
 }

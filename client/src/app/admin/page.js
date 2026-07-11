@@ -11,7 +11,18 @@ import {
   getAdminReviews,
   moderateReview,
   getAdminProperties,
+  getCurrentUser,
+  updateProfile,
+  updatePassword,
+  logout,
 } from "../api";
+
+const VERIFICATION_STATUSES = [
+  { value: "pending", label: "Pending" },
+  { value: "in_review", label: "In Review" },
+  { value: "verified", label: "Verified" },
+  { value: "rejected", label: "Rejected" },
+];
 
 const NAV_ITEMS = [
   { label: "Dashboard", icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> },
@@ -43,6 +54,7 @@ export default function AdminPanel() {
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -65,6 +77,21 @@ export default function AdminPanel() {
   const [allPropertiesLoading, setAllPropertiesLoading] = useState(false);
   const [allPropertiesTotal, setAllPropertiesTotal] = useState(0);
   const [propertiesSort, setPropertiesSort] = useState("views");
+
+  const [verificationQueue, setVerificationQueue] = useState([]);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationTotal, setVerificationTotal] = useState(0);
+  const [verificationStatus, setVerificationStatus] = useState("pending");
+  const [verificationActioningId, setVerificationActioningId] = useState(null);
+
+  const [settingsUser, setSettingsUser] = useState(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({ first_name: "", last_name: "", phone: "" });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [passwordForm, setPasswordForm] = useState({ new_password: "", confirm_password: "" });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -111,19 +138,52 @@ export default function AdminPanel() {
     finally { setAllPropertiesLoading(false); }
   };
 
+  const loadVerificationQueue = async (status = verificationStatus) => {
+    try {
+      setVerificationLoading(true);
+      const q = await getVerificationQueue(status);
+      if (q.success) { setVerificationQueue(q.properties); setVerificationTotal(q.total); }
+    } catch (e) { console.error("Verification error:", e); }
+    finally { setVerificationLoading(false); }
+  };
+
+  const loadSettings = async () => {
+    try {
+      setSettingsLoading(true);
+      const res = await getCurrentUser();
+      if (res.success) {
+        setSettingsUser(res.user);
+        setSettingsForm({
+          first_name: res.user.first_name || "",
+          last_name: res.user.last_name || "",
+          phone: res.user.phone || "",
+        });
+      }
+    } catch (e) { console.error("Settings error:", e); }
+    finally { setSettingsLoading(false); }
+  };
+
   useEffect(() => {
     loadData();
+    loadSettings();
   }, []);
 
   useEffect(() => {
     if (activeNav === "Users") loadUsers();
     if (activeNav === "Reviews") loadReviews();
     if (activeNav === "Properties") loadAllProperties();
+    if (activeNav === "Verification") loadVerificationQueue();
+    if (activeNav === "Settings") loadSettings();
   }, [activeNav]);
 
   const handlePropertiesSortChange = (sort) => {
     setPropertiesSort(sort);
     loadAllProperties(sort);
+  };
+
+  const handleVerificationStatusChange = (status) => {
+    setVerificationStatus(status);
+    loadVerificationQueue(status);
   };
 
   const handleRefresh = async () => {
@@ -145,6 +205,11 @@ export default function AdminPanel() {
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
+  };
+
   const handleToggleUser = async (userId) => {
     try {
       const res = await toggleUser(userId);
@@ -164,6 +229,61 @@ export default function AdminPanel() {
       alert(`Failed: ${e.message}`);
     } finally {
       setModeratingId(null);
+    }
+  };
+
+  const handleVerificationAction = async (propertyId, action) => {
+    try {
+      setVerificationActioningId(propertyId);
+      await verifyProperty(propertyId, action);
+      setVerificationQueue((prev) => prev.filter((p) => p.id !== propertyId));
+      setVerificationTotal((t) => Math.max(0, t - 1));
+      // The Dashboard's queue always shows "pending" — keep it in sync if that's what's showing here too.
+      if (verificationStatus === "pending") {
+        setQueue((prev) => prev.filter((p) => p.id !== propertyId));
+        setQueueTotal((t) => Math.max(0, t - 1));
+      }
+    } catch (e) {
+      alert(`Failed: ${e.message}`);
+    } finally {
+      setVerificationActioningId(null);
+    }
+  };
+
+  const handleSettingsSave = async (e) => {
+    e.preventDefault();
+    setSettingsSaving(true);
+    setSettingsMessage("");
+    try {
+      const res = await updateProfile(settingsForm);
+      if (res.success) setSettingsMessage("Profile updated.");
+    } catch (e) {
+      setSettingsMessage(`Failed: ${e.message}`);
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handlePasswordSave = async (e) => {
+    e.preventDefault();
+    setPasswordMessage("");
+    if (!passwordForm.new_password || passwordForm.new_password.length < 6) {
+      setPasswordMessage("Password must be at least 6 characters.");
+      return;
+    }
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordMessage("Passwords don't match.");
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await updatePassword({ new_password: passwordForm.new_password });
+      setPasswordMessage("Password updated.");
+      setPasswordForm({ new_password: "", confirm_password: "" });
+    } catch (e) {
+      setPasswordMessage(`Failed: ${e.message}`);
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -206,9 +326,41 @@ export default function AdminPanel() {
               {queueTotal > 0 && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"/>}
             </button>
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-bold leading-tight" style={{ color: "#1D4ED8" }}>PG Connect Admin</p>
+              <p className="text-sm font-bold leading-tight" style={{ color: "#1D4ED8" }}>
+                {settingsUser ? `${settingsUser.first_name} ${settingsUser.last_name}` : "PG Connect Admin"}
+              </p>
             </div>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 cursor-pointer" style={{ background: "#1D4ED8" }}>AD</div>
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 cursor-pointer"
+                style={{ background: "#1D4ED8" }}
+              >
+                {settingsUser ? `${settingsUser.first_name?.[0] || ""}${settingsUser.last_name?.[0] || ""}`.toUpperCase() || "AD" : "AD"}
+              </button>
+              {userMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-blue-100 py-1.5 z-50">
+                    <p className="px-3.5 py-2 text-xs text-[#1E3A5F80] truncate border-b border-blue-50">
+                      {settingsUser?.email || "Loading..."}
+                    </p>
+                    <button
+                      onClick={() => { setActiveNav("Settings"); setUserMenuOpen(false); }}
+                      className="w-full text-left px-3.5 py-2 text-sm text-[#1E3A5F] hover:bg-blue-50 cursor-pointer"
+                    >
+                      Account Settings
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-3.5 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
 
@@ -548,6 +700,193 @@ export default function AdminPanel() {
                       </table>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* VERIFICATION TAB */}
+              {activeNav === "Verification" && (
+                <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: "#e0f2fe" }}>
+                  <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
+                    <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Property Verification ({verificationTotal})</h2>
+                    <p className="text-xs mt-0.5 mb-3" style={{ color: "#1E3A5F80" }}>Review submitted properties by status.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {VERIFICATION_STATUSES.map((s) => (
+                        <button
+                          key={s.value}
+                          onClick={() => handleVerificationStatusChange(s.value)}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
+                          style={verificationStatus === s.value ? { background: "#1D4ED8", color: "white", borderColor: "#1D4ED8" } : { background: "white", color: "#1E3A5F80", borderColor: "#bfdbfe" }}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {verificationLoading ? (
+                    <div className="px-6 py-8 text-sm text-slate-400">Loading...</div>
+                  ) : verificationQueue.length === 0 ? (
+                    <div className="px-6 py-8 text-sm text-slate-400 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      No properties with this status.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-100">
+                            {["Property", "Owner", "City", "Submitted", "Status", "Action"].map((h) => (
+                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-5 py-3">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {verificationQueue.map((p) => (
+                            <tr key={p.id} className="hover:bg-[#EFF6FF]/60 transition-colors">
+                              <td className="px-5 py-3.5">
+                                <div className="flex items-center gap-3">
+                                  {p.property_images?.[0]?.image_url && (
+                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#EFF6FF] shrink-0">
+                                      <img src={p.property_images[0].image_url} alt={p.name} className="w-full h-full object-cover"/>
+                                    </div>
+                                  )}
+                                  <span className="text-sm font-semibold text-[#1E3A5F]">{p.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5 text-sm text-slate-600">
+                                {p.owner?.first_name} {p.owner?.last_name}
+                              </td>
+                              <td className="px-5 py-3.5 text-sm text-slate-500">{p.city}</td>
+                              <td className="px-5 py-3.5 text-sm text-slate-500">
+                                {new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                              </td>
+                              <td className="px-5 py-3.5"><StatusBadge status={p.status}/></td>
+                              <td className="px-5 py-3.5">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleVerificationAction(p.id, "approve")}
+                                    disabled={verificationActioningId === p.id}
+                                    className="text-xs font-bold cursor-pointer disabled:opacity-50" style={{ color: "#1D4ED8" }}>
+                                    Approve
+                                  </button>
+                                  <span className="text-slate-200">|</span>
+                                  <button
+                                    onClick={() => handleVerificationAction(p.id, "review")}
+                                    disabled={verificationActioningId === p.id}
+                                    className="text-xs font-medium cursor-pointer disabled:opacity-50" style={{ color: "#F97316" }}>
+                                    Review
+                                  </button>
+                                  <span className="text-slate-200">|</span>
+                                  <button
+                                    onClick={() => handleVerificationAction(p.id, "reject")}
+                                    disabled={verificationActioningId === p.id}
+                                    className="text-xs font-medium text-slate-400 hover:text-red-500 cursor-pointer disabled:opacity-50">
+                                    Reject
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SETTINGS TAB */}
+              {activeNav === "Settings" && (
+                <div className="space-y-6 max-w-xl">
+                  <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: "#e0f2fe" }}>
+                    <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
+                      <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Admin Account</h2>
+                      <p className="text-xs mt-0.5" style={{ color: "#1E3A5F80" }}>{settingsUser?.email}</p>
+                    </div>
+                    {settingsLoading ? (
+                      <div className="px-6 py-8 text-sm text-slate-400">Loading...</div>
+                    ) : (
+                      <form onSubmit={handleSettingsSave} className="px-5 sm:px-6 py-5 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">First Name</label>
+                            <input
+                              type="text"
+                              value={settingsForm.first_name}
+                              onChange={(e) => setSettingsForm((f) => ({ ...f, first_name: e.target.value }))}
+                              className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                              style={{ borderColor: "#bfdbfe" }}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Last Name</label>
+                            <input
+                              type="text"
+                              value={settingsForm.last_name}
+                              onChange={(e) => setSettingsForm((f) => ({ ...f, last_name: e.target.value }))}
+                              className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                              style={{ borderColor: "#bfdbfe" }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Phone</label>
+                          <input
+                            type="tel"
+                            value={settingsForm.phone}
+                            onChange={(e) => setSettingsForm((f) => ({ ...f, phone: e.target.value }))}
+                            className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                            style={{ borderColor: "#bfdbfe" }}
+                          />
+                        </div>
+                        {settingsMessage && <p className="text-xs" style={{ color: settingsMessage.startsWith("Failed") ? "#dc2626" : "#15803d" }}>{settingsMessage}</p>}
+                        <button
+                          type="submit"
+                          disabled={settingsSaving}
+                          className="text-sm font-semibold px-5 py-2.5 rounded-xl text-white cursor-pointer disabled:opacity-60"
+                          style={{ background: "#1D4ED8" }}
+                        >
+                          {settingsSaving ? "Saving..." : "Save Changes"}
+                        </button>
+                      </form>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: "#e0f2fe" }}>
+                    <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
+                      <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Change Password</h2>
+                    </div>
+                    <form onSubmit={handlePasswordSave} className="px-5 sm:px-6 py-5 space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">New Password</label>
+                        <input
+                          type="password"
+                          value={passwordForm.new_password}
+                          onChange={(e) => setPasswordForm((f) => ({ ...f, new_password: e.target.value }))}
+                          className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                          style={{ borderColor: "#bfdbfe" }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Confirm New Password</label>
+                        <input
+                          type="password"
+                          value={passwordForm.confirm_password}
+                          onChange={(e) => setPasswordForm((f) => ({ ...f, confirm_password: e.target.value }))}
+                          className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                          style={{ borderColor: "#bfdbfe" }}
+                        />
+                      </div>
+                      {passwordMessage && <p className="text-xs" style={{ color: passwordMessage.startsWith("Failed") || passwordMessage.includes("match") || passwordMessage.includes("must be") ? "#dc2626" : "#15803d" }}>{passwordMessage}</p>}
+                      <button
+                        type="submit"
+                        disabled={passwordSaving}
+                        className="text-sm font-semibold px-5 py-2.5 rounded-xl text-white cursor-pointer disabled:opacity-60"
+                        style={{ background: "#1D4ED8" }}
+                      >
+                        {passwordSaving ? "Updating..." : "Update Password"}
+                      </button>
+                    </form>
+                  </div>
                 </div>
               )}
 

@@ -6,7 +6,7 @@ import { supabase } from "../../lib/supabase";
 import { getCurrentUser, logout } from "../api";
 
 const DASHBOARD_PATH = {
-  student: "/propertys",
+  student: "/referrerDashboard",
   owner: "/ownersDashboard",
   admin: "/admin",
 };

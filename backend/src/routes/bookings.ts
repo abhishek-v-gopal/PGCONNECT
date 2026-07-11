@@ -61,7 +61,7 @@ bookingsRouter.get('/owner', authMiddleware, requireRole('owner', 'admin'), asyn
     .from('bookings')
     .select(`
       *,
-      tenant:profiles!bookings_tenant_id_fkey(id, first_name, last_name, email, phone),
+      tenant:profiles!bookings_tenant_id_fkey(id, first_name, last_name, phone),
       properties(id, name, city)
     `)
     .in('property_id', propIds)

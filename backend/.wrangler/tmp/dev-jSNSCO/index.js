@@ -31176,7 +31176,7 @@ bookingsRouter.get("/owner", authMiddleware, requireRole("owner", "admin"), asyn
   if (!propIds.length) return c.json({ success: true, count: 0, bookings: [] });
   const { data, error: error3 } = await supabase.from("bookings").select(`
       *,
-      tenant:profiles!bookings_tenant_id_fkey(id, first_name, last_name, email, phone),
+      tenant:profiles!bookings_tenant_id_fkey(id, first_name, last_name, phone),
       properties(id, name, city)
     `).in("property_id", propIds).order("created_at", { ascending: false });
   if (error3) return c.json({ success: false, message: error3.message }, 500);

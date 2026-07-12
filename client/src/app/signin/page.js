@@ -2,12 +2,20 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { userLogin } from "../api";
 import Navbar from "../components/Navbar";
 
 export default function SignIn() {
+  return (
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams?.get("next") || "";

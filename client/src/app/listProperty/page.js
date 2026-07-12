@@ -2,7 +2,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createProperty, getCurrentUser } from "../api";
 import { supabase } from "../../lib/supabase";
@@ -12,6 +12,14 @@ const AMENITIES = ["Wi-Fi", "AC", "Laundry", "Kitchen", "Security", "Gym"];
 const ROOM_TYPES = ["Default", "Single", "Double", "Triple", "More than 3"];
 
 export default function ListProperty() {
+  return (
+    <Suspense fallback={null}>
+      <ListPropertyForm />
+    </Suspense>
+  );
+}
+
+function ListPropertyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);

@@ -1,7 +1,7 @@
 "use client";
 import Head from "next/head";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAllProperties } from "../api";
 import Navbar from "../components/Navbar";
@@ -86,6 +86,14 @@ const mapProperty = (property) => {
 
 // ── COMPONENT ────────────────────────────────────────────────────────────────
 export default function SearchResults() {
+  return (
+    <Suspense fallback={null}>
+      <SearchResultsContent />
+    </Suspense>
+  );
+}
+
+function SearchResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 

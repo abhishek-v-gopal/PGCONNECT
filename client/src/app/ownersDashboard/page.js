@@ -1,107 +1,113 @@
 "use client";
 import Head from "next/head";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getOwnerInquiries, updateInquiryStatus, getOwnerProperties } from "../api";
+import {
+  getOwnerInquiries,
+  updateInquiryStatus,
+  getOwnerProperties,
+  getOwnerBookings,
+  getOwnerPayouts,
+  getCurrentUser,
+  updateProfile,
+  updatePassword,
+  logout,
+} from "../api";
 
-const tenants = [
-  {
-    id: 1,
-    initials: "AK",
-    color: "bg-blue-200 text-blue-700",
-    name: "Aditya Kapoor",
-    email: "aditya.k@university.edu",
-    property: "Skyline Heights",
-    room: "Room 402B (Shared)",
-    status: "PAID",
-    rent: "₹14,500",
-    rentNote: "Due on 5th Oct",
-    rentNoteColor: "text-slate-400",
-  },
-  {
-    id: 2,
-    initials: "MS",
-    color: "bg-purple-200 text-purple-700",
-    name: "Meera Sharma",
-    email: "meera.s@iit.ac.in",
-    property: "Green Park Villa",
-    room: "Room 101 (Single)",
-    status: "OVERDUE",
-    rent: "₹22,000",
-    rentNote: "3 days late",
-    rentNoteColor: "text-red-500",
-  },
-  {
-    id: 3,
-    initials: "RS",
-    color: "bg-amber-200 text-amber-700",
-    name: "Rahul Singh",
-    email: "rahul.singh@design.in",
-    property: "Skyline Heights",
-    room: "Room 205A (Shared)",
-    status: "PROCESSING",
-    rent: "₹12,800",
-    rentNote: "Pending verification",
-    rentNoteColor: "text-slate-400",
-  },
-];
-
-const statusStyles = {
-  PAID: "bg-green-50 text-green-700 border border-green-200",
-  OVERDUE: "bg-red-50 text-red-600 border border-red-200",
-  PROCESSING: "bg-blue-50 text-blue-600 border border-blue-200",
+const BOOKING_STATUS_STYLES = {
+  pending: "bg-amber-50 text-amber-700 border border-amber-200",
+  confirmed: "bg-[#dbeafe] text-[#1D4ED8] border border-blue-200",
+  active: "bg-green-50 text-green-700 border border-green-200",
+  completed: "bg-slate-100 text-slate-600 border border-slate-200",
+  cancelled: "bg-red-50 text-red-600 border border-red-200",
 };
 
-const navItems = [
+const PAYMENT_STATUS_STYLES = {
+  unpaid: "bg-red-50 text-red-600 border border-red-200",
+  paid: "bg-green-50 text-green-700 border border-green-200",
+  overdue: "bg-red-50 text-red-600 border border-red-200",
+  processing: "bg-amber-50 text-amber-700 border border-amber-200",
+};
+
+const NAV_ITEMS = [
   {
-    label: "Dashboard", active: true,
+    label: "Dashboard",
     icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>,
   },
   {
-    label: "My Bookings", active: false,
+    label: "Bookings",
     icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>,
   },
   {
-    label: "Payments", active: false,
+    label: "Payments",
     icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>,
   },
   {
-    label: "Saved", active: false,
-    icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>,
-  },
-  {
-    label: "Settings", active: false,
+    label: "Settings",
     icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>,
   },
 ];
 
+const formatCurrency = (n) => n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
+
 export default function OwnerDashboard() {
   const router = useRouter();
-  const [search, setSearch] = useState("");
   const [inquirySearch, setInquirySearch] = useState("");
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const [user, setUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(true);
+
+  const [properties, setProperties] = useState([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(true);
+
   const [inquiries, setInquiries] = useState([]);
   const [inquiryLoading, setInquiryLoading] = useState(true);
   const [inquiryError, setInquiryError] = useState("");
   const [seenInquiryIds, setSeenInquiryIds] = useState([]);
   const [updatingInquiryId, setUpdatingInquiryId] = useState(null);
-  const [user, setUser] = useState(null);
-  const [properties, setProperties] = useState([]);
-  const [propertiesLoading, setPropertiesLoading] = useState(true);
 
-  const filtered = tenants.filter(
-    (t) =>
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.property.toLowerCase().includes(search.toLowerCase())
-  );
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState("");
+  const [bookingSearch, setBookingSearch] = useState("");
+
+  const [payouts, setPayouts] = useState([]);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [payoutsError, setPayoutsError] = useState("");
+  const [payoutsTotal, setPayoutsTotal] = useState(0);
+
+  const [settingsForm, setSettingsForm] = useState({ first_name: "", last_name: "", phone: "" });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [passwordForm, setPasswordForm] = useState({ new_password: "", confirm_password: "" });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
 
   useEffect(() => {
     let mounted = true;
 
-    console.log("OwnerDashboard mounted. User data:", user);
-    setUser(user);
+    const loadUser = async () => {
+      try {
+        setUserLoading(true);
+        const res = await getCurrentUser();
+        if (mounted && res.success) {
+          setUser(res.user);
+          setSettingsForm({
+            first_name: res.user.first_name || "",
+            last_name: res.user.last_name || "",
+            phone: res.user.phone || "",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load current user:", err);
+      } finally {
+        if (mounted) setUserLoading(false);
+      }
+    };
 
     const loadInquiries = async () => {
       try {
@@ -131,8 +137,8 @@ export default function OwnerDashboard() {
       }
     };
 
+    loadUser();
     loadProperties();
-
     loadInquiries();
 
     return () => {
@@ -141,27 +147,11 @@ export default function OwnerDashboard() {
   }, []);
 
   useEffect(() => {
-
     const stored = typeof window !== "undefined" ? localStorage.getItem("owner_seen_inquiry_ids") : null;
-    const userData = typeof window !== "undefined" ? localStorage.getItem("user_data") : null;
-
-    try {
-      if (userData) {
-        const parsedUser = JSON.parse(userData);
-        console.log("parsedUser:", parsedUser);
-
-        setUser(parsedUser);
-      }
-    } catch (error) {
-      console.error("Error parsing user data:", error);
-    }
-
     if (!stored) return;
     try {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        setSeenInquiryIds(parsed);
-      }
+      if (Array.isArray(parsed)) setSeenInquiryIds(parsed);
     } catch {
       // ignore invalid localStorage data
     }
@@ -171,6 +161,38 @@ export default function OwnerDashboard() {
     if (typeof window === "undefined") return;
     localStorage.setItem("owner_seen_inquiry_ids", JSON.stringify(seenInquiryIds));
   }, [seenInquiryIds]);
+
+  const loadBookings = async () => {
+    try {
+      setBookingsLoading(true);
+      setBookingsError("");
+      const res = await getOwnerBookings();
+      if (res.success) setBookings(res.bookings || []);
+    } catch (err) {
+      setBookingsError("Unable to load bookings.");
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  const loadPayouts = async () => {
+    try {
+      setPayoutsLoading(true);
+      setPayoutsError("");
+      const res = await getOwnerPayouts();
+      if (res.success) { setPayouts(res.payouts || []); setPayoutsTotal(res.total || 0); }
+    } catch (err) {
+      setPayoutsError("Unable to load payments.");
+    } finally {
+      setPayoutsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeNav === "Bookings" && bookings.length === 0 && !bookingsLoading) loadBookings();
+    if (activeNav === "Payments" && payouts.length === 0 && !payoutsLoading) loadPayouts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNav]);
 
   const filteredInquiries = useMemo(() => {
     const q = inquirySearch.toLowerCase();
@@ -183,56 +205,94 @@ export default function OwnerDashboard() {
     });
   }, [inquiries, inquirySearch]);
 
-  const isSeen = (item) => item?.status === "seen" || seenInquiryIds.includes(item?._id);
+  const filteredBookings = useMemo(() => {
+    const q = bookingSearch.toLowerCase();
+    return bookings.filter((b) => {
+      if (!q) return true;
+      const tenantName = `${b?.tenant?.first_name || ""} ${b?.tenant?.last_name || ""}`.toLowerCase();
+      const propertyName = String(b?.properties?.name || "").toLowerCase();
+      return tenantName.includes(q) || propertyName.includes(q);
+    });
+  }, [bookings, bookingSearch]);
 
-  const unseenCount = inquiries.reduce((count, item) => (isSeen(item) ? count : count + 1), 0);
+  const isSeen = (item) => item?.status === "seen" || seenInquiryIds.includes(item?._id);
 
   const markInquirySeen = (id) => {
     if (!id) return;
     setSeenInquiryIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   };
 
-  const markAllInquiriesSeen = () => {
-    const allIds = inquiries.map((item) => item?._id).filter(Boolean);
-    setSeenInquiryIds((prev) => Array.from(new Set([...prev, ...allIds])));
-  };
-
   const handleUpdateInquiryStatus = async (inquiryId, newStatus) => {
     try {
       setUpdatingInquiryId(inquiryId);
       await updateInquiryStatus(inquiryId, newStatus);
-
-      // Update local state
       setInquiries((prev) =>
-        prev.map((item) =>
-          item._id === inquiryId ? { ...item, status: newStatus } : item
-        )
+        prev.map((item) => (item._id === inquiryId ? { ...item, status: newStatus } : item))
       );
     } catch (error) {
-      console.error("Error updating inquiry status:", error);
-      alert(`Failed to update status: ${error?.response?.data?.message || error.message}`);
+      alert(`Failed to update status: ${error?.message || "Unknown error"}`);
     } finally {
       setUpdatingInquiryId(null);
     }
+  };
+
+  const handleSettingsSave = async (e) => {
+    e.preventDefault();
+    setSettingsSaving(true);
+    setSettingsMessage("");
+    try {
+      const res = await updateProfile(settingsForm);
+      if (res.success) setSettingsMessage("Profile updated.");
+    } catch (err) {
+      setSettingsMessage(`Failed: ${err.message}`);
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handlePasswordSave = async (e) => {
+    e.preventDefault();
+    setPasswordMessage("");
+    if (!passwordForm.new_password || passwordForm.new_password.length < 6) {
+      setPasswordMessage("Password must be at least 6 characters.");
+      return;
+    }
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordMessage("Passwords don't match.");
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await updatePassword({ new_password: passwordForm.new_password });
+      setPasswordMessage("Password updated.");
+      setPasswordForm({ new_password: "", confirm_password: "" });
+    } catch (err) {
+      setPasswordMessage(`Failed: ${err.message}`);
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
   };
 
   const formatDate = (value) => {
     if (!value) return "-";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "-";
-    return date.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
   };
 
-  
-    // ✅ Place these BEFORE the return statement, INSIDE the component function
-    const totalBeds = properties.reduce((s, p) => s + (p.totalBeds ?? 0), 0);
-    const occupiedBeds = properties.reduce((s, p) => s + ((p.totalBeds ?? 0) - (p.availableBeds ?? 0)), 0);
-    const availableBeds = properties.reduce((s, p) => s + (p.availableBeds ?? 0), 0);
-    const occupancyPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+  const totalBeds = properties.reduce((s, p) => s + (p.total_beds ?? 0), 0);
+  const availableBeds = properties.reduce((s, p) => s + (p.available_beds ?? 0), 0);
+  const occupiedBeds = Math.max(0, totalBeds - availableBeds);
+  const occupancyPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+
+  const initials = user
+    ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase() || "O"
+    : "";
 
   return (
     <>
@@ -252,111 +312,86 @@ export default function OwnerDashboard() {
         `}</style>
       </Head>
 
-      <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="min-h-screen flex flex-col" style={{ background: "#EFF6FF", color: "#1E3A5F" }}>
 
         {/* ── TOP NAV ── */}
-        <header className="sticky top-0 z-50 bg-white border-b border-slate-200 h-14 flex items-center px-4 sm:px-6 gap-4">
-          {/* Mobile hamburger */}
-          <button className="lg:hidden p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setSidebarOpen(true)}>
+        <header className="sticky top-0 z-50 bg-white border-b border-blue-100 shadow-sm h-14 flex items-center px-4 sm:px-6 gap-4">
+          <button className="lg:hidden p-1.5 rounded-lg transition-colors" style={{ color: "#1E3A5F60" }} onClick={() => setSidebarOpen(true)}>
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
 
-          {/* Logo — shown only on mobile since desktop sidebar has it */}
           <div className="lg:hidden">
-            <p className="font-serif-display text-blue-600 text-base font-bold leading-tight">PG Connect</p>
+            <p className="font-bold text-base leading-tight" style={{ color: "#1D4ED8" }}>PG Connect</p>
           </div>
 
-          {/* Center nav — desktop */}
           <div className="hidden lg:flex items-center gap-1 ml-4">
-            <span className="text-lg font-bold text-slate-900 mr-6">Owner Dashboard</span>
-            {["Properties", "Analytics"].map((l) => (
-              <button key={l} className="text-sm font-medium text-slate-500 hover:text-blue-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-all cursor-pointer">{l}</button>
-            ))}
+            <span className="text-lg font-bold mr-6" style={{ color: "#1E3A5F" }}>Owner Dashboard</span>
           </div>
 
           <div className="flex-1" />
 
-          {/* Right side */}
-          <div className="flex items-center gap-3">
-            {/* Notification bell */}
-            <div className="relative">
-              <button
-                onClick={() => setNotifOpen(!notifOpen)}
-                className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-              </button>
-              {notifOpen && (
-                <div className="absolute right-0 top-10 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-900">Notifications</span>
-                    <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-bold">4 new</span>
-                  </div>
-                  {[
-                    { text: "Aditya Kapoor paid ₹14,500", time: "2m ago", dot: "bg-green-500" },
-                    { text: "Meera Sharma rent is overdue", time: "1h ago", dot: "bg-red-500" },
-                    { text: "New booking request received", time: "3h ago", dot: "bg-blue-500" },
-                    { text: "Skyline Heights — inspection due", time: "1d ago", dot: "bg-amber-500" },
-                  ].map((n, i) => (
-                    <div key={i} className="px-4 py-3 hover:bg-slate-50 flex items-start gap-3 cursor-pointer transition-colors border-b border-slate-50">
-                      <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.dot}`} />
-                      <div>
-                        <p className="text-xs text-slate-700 font-medium">{n.text}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{n.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Profile */}
-            <div className="flex items-center gap-2.5 cursor-pointer group">
+          <div className="relative">
+            <button
+              onClick={() => setUserMenuOpen((v) => !v)}
+              className="flex items-center gap-2.5 cursor-pointer group"
+            >
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-900 leading-tight">{user?.FirstName || "Owner"}</p>
+                <p className="text-sm font-semibold text-[#1E3A5F] leading-tight">
+                  {userLoading ? "..." : user ? `${user.first_name} ${user.last_name}` : "Owner"}
+                </p>
                 <p className="text-[10px] text-slate-400 uppercase tracking-wider">{user?.role || "Owner"}</p>
               </div>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                RK
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: "#1D4ED8" }}>
+                {initials || "O"}
               </div>
-            </div>
+            </button>
+            {userMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-blue-100 py-1.5 z-50">
+                  <p className="px-3.5 py-2 text-xs text-[#1E3A5F80] truncate border-b border-blue-50">{user?.email}</p>
+                  <button
+                    onClick={() => { setActiveNav("Settings"); setUserMenuOpen(false); }}
+                    className="w-full text-left px-3.5 py-2 text-sm text-[#1E3A5F] hover:bg-blue-50 cursor-pointer"
+                  >
+                    Account Settings
+                  </button>
+                  <button onClick={handleLogout} className="w-full text-left px-3.5 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer">
+                    Sign Out
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </header>
 
         <div className="flex flex-1">
 
-          {/* ── SIDEBAR ── */}
-          {/* Mobile overlay */}
           {sidebarOpen && (
             <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setSidebarOpen(false)} />
           )}
 
           <aside className={`
-            fixed inset-y-0 left-0 z-50 
-            h-screen w-56 bg-white border-r border-slate-200
+            fixed inset-y-0 left-0 z-50
+            h-screen w-56 bg-white border-r border-blue-100
             flex flex-col overflow-hidden
             transition-transform duration-300
             ${sidebarOpen ? "translate-x-0 slide-in" : "-translate-x-full lg:translate-x-0"}
             lg:!sticky lg:top-14 lg:h-[calc(100vh-56px)] lg:self-start lg:z-30
           `}>
-            {/* Logo inside sidebar (desktop) */}
             <div className="hidden lg:block px-5 pt-6 pb-4">
               <button onClick={() => router.push("/")} className="cursor-pointer">
-                <p className="font-serif-display text-blue-600 text-base font-bold leading-tight">PG Connect</p>
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mt-0.5">Student Portal</p>
+                <p className="font-bold text-base leading-tight" style={{ color: "#1D4ED8" }}>PG Connect</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mt-0.5">Owner Portal</p>
               </button>
             </div>
 
-            {/* Mobile close */}
             <div className="lg:hidden flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
               <div>
-                <p className="font-serif-display text-blue-600 text-base font-bold">PG Connect</p>
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Student Portal</p>
+                <p className="font-serif-display text-[#1D4ED8] text-base font-bold">PG Connect</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Owner Portal</p>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-600">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -365,31 +400,30 @@ export default function OwnerDashboard() {
               </button>
             </div>
 
-            {/* Nav items */}
             <nav className="flex-1 px-3 py-4 space-y-1">
-              {navItems.map((item) => (
+              {NAV_ITEMS.map((item) => (
                 <button
                   key={item.label}
                   onClick={() => { setActiveNav(item.label); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer text-left
-                    ${activeNav === item.label
-                      ? "bg-blue-50 text-blue-600"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                    }`}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer text-left"
+                  style={activeNav === item.label ? { background: "#dbeafe", color: "#1D4ED8" } : { color: "#1E3A5F80" }}
                 >
-                  <span className={activeNav === item.label ? "text-blue-600" : "text-slate-400"}>{item.icon}</span>
+                  <span style={activeNav === item.label ? { color: "#1D4ED8" } : { color: "#1E3A5F60" }}>{item.icon}</span>
                   {item.label}
                 </button>
               ))}
             </nav>
 
-            {/* Upgrade CTA */}
             <div className="p-4">
-              <button className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-sm font-semibold py-2.5 rounded-xl transition-all cursor-pointer">
+              <button
+                onClick={() => router.push("/listProperty")}
+                className="w-full flex items-center justify-center gap-2 active:scale-[0.98] text-white text-sm font-semibold py-2.5 rounded-xl transition-all cursor-pointer"
+                style={{ background: "#F97316" }}
+              >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                Upgrade to Pro
+                List New PG
               </button>
             </div>
           </aside>
@@ -397,367 +431,417 @@ export default function OwnerDashboard() {
           {/* ── MAIN CONTENT ── */}
           <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 min-w-0">
 
-            {/* Welcome row */}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-7">
-              <div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">Welcome back, Rajesh.</h1>
-                <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-                  Your properties are currently at{" "}
-<strong className="text-slate-700">
-  {propertiesLoading ? "..." : `${occupancyPct}% occupancy`}
-</strong>. You have{" "}
-<strong className="text-slate-700">{inquiries.length} inquiries</strong>{" "}
-awaiting review.
-                </p>
-              </div>
-              <div className="flex grid grid-cols-1 min-[425px]:grid-cols-2 gap-2.5 shrink-0">
-                <button className="flex items-center gap-2 border border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 text-slate-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap">
-                  <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-3.51" />
-                  </svg>
-                  Update Availability
-                </button>
-                <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Add New PG
-                </button>
-              </div>
-            </div>
-
-            {/* ── STAT CARDS ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-
-              {/* Total Beds */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-2xl" />
-                <div className="flex items-start justify-between mb-4 pl-2">
-                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                    <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10" /><path d="M2 14h20" />
-                    </svg>
+            {activeNav === "Dashboard" && (
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-7">
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight" style={{ color: "#1E3A5F" }}>
+                      Welcome back{user ? `, ${user.first_name}` : ""}.
+                    </h1>
+                    <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
+                      Your properties are currently at{" "}
+                      <strong className="text-slate-700">{propertiesLoading ? "..." : `${occupancyPct}% occupancy`}</strong>. You have{" "}
+                      <strong className="text-slate-700">{inquiries.length} inquiries</strong> awaiting review.
+                    </p>
                   </div>
-                  <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">
-                    {properties.length} PGs
-                  </span>
-                </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Total Bed Capacity</p>
-                <p className="text-4xl font-bold text-slate-900 mt-1 pl-2"> {propertiesLoading ? "—" : totalBeds} </p>
-                <p className="text-xs text-slate-400 mt-2 pl-2"> Across {properties.length} {properties.length === 1 ? "location" : "locations"} </p>
-              </div>
-
-              {/* Occupied Beds */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-green-500 rounded-l-2xl" />
-                <div className="flex items-start justify-between mb-4 pl-2">
-                  <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  <button
+                    onClick={() => router.push("/listProperty")}
+                    className="flex items-center gap-2 active:scale-[0.98] text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0"
+                    style={{ background: "#1D4ED8" }}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
-                  </div>
-                  <span className="text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                    {propertiesLoading ? "—" : `${occupancyPct}%`}
-                  </span>
+                    Add New PG
+                  </button>
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Occupied Beds</p>
-                <p className="text-4xl font-bold text-slate-900 mt-1 pl-2">
-                  {propertiesLoading ? "—" : occupiedBeds}
-                </p>
-                <div className="flex items-center gap-1.5 mt-2 pl-2">
-                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-                  <p className="text-xs text-green-600 font-medium">
-                    {propertiesLoading ? "Loading..." : occupancyPct >= 80 ? "Healthy high demand" : "Room to grow"}
-                  </p>
-                </div>
-              </div>
 
-              {/* Available Beds */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-red-400 rounded-l-2xl" />
-                <div className="flex items-start justify-between mb-4 pl-2">
-                  <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
-                    <svg className="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Available Beds</p>
-                <p className="text-4xl font-bold text-slate-900 mt-1 pl-2">
-                  {propertiesLoading ? "—" : availableBeds}
-                </p>
-                <div className="flex items-center mt-2 pl-2 gap-1 flex-wrap">
-                  {properties.slice(0, 3).map((p, i) => (
-                    <div
-                      key={p._id}
-                      title={p.name}
-                      className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[8px] text-white font-bold ${["bg-blue-400", "bg-purple-400", "bg-amber-400"][i % 3]}`}
-                    >
-                      {p.name.slice(0, 2).toUpperCase()}
+                {/* STAT CARDS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-2xl" />
+                    <div className="flex items-start justify-between mb-4 pl-2">
+                      <div className="w-10 h-10 bg-[#dbeafe] rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-[#1D4ED8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10" /><path d="M2 14h20" />
+                        </svg>
+                      </div>
+                      <span className="text-xs font-bold text-slate-500 bg-[#EFF6FF] border border-slate-200 px-2 py-0.5 rounded-full">{properties.length} PGs</span>
                     </div>
-                  ))}
-                  {properties.length > 3 && (
-                    <span className="text-xs text-slate-400 ml-1 font-medium">+{properties.length - 3}</span>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Total Bed Capacity</p>
+                    <p className="text-4xl font-bold text-[#1E3A5F] mt-1 pl-2">{propertiesLoading ? "—" : totalBeds}</p>
+                    <p className="text-xs text-slate-400 mt-2 pl-2">Across {properties.length} {properties.length === 1 ? "location" : "locations"}</p>
+                  </div>
+
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-green-500 rounded-l-2xl" />
+                    <div className="flex items-start justify-between mb-4 pl-2">
+                      <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                          <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                      </div>
+                      <span className="text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">{propertiesLoading ? "—" : `${occupancyPct}%`}</span>
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Occupied Beds</p>
+                    <p className="text-4xl font-bold text-[#1E3A5F] mt-1 pl-2">{propertiesLoading ? "—" : occupiedBeds}</p>
+                    <div className="flex items-center gap-1.5 mt-2 pl-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                      <p className="text-xs text-green-600 font-medium">
+                        {propertiesLoading ? "Loading..." : occupancyPct >= 80 ? "Healthy high demand" : "Room to grow"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-red-400 rounded-l-2xl" />
+                    <div className="flex items-start justify-between mb-4 pl-2">
+                      <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+                        </svg>
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Available Beds</p>
+                    <p className="text-4xl font-bold text-[#1E3A5F] mt-1 pl-2">{propertiesLoading ? "—" : availableBeds}</p>
+                    <div className="flex items-center mt-2 pl-2 gap-1 flex-wrap">
+                      {properties.slice(0, 3).map((p, i) => (
+                        <div
+                          key={p.id}
+                          title={p.name}
+                          className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[8px] text-white font-bold ${["bg-blue-400", "bg-purple-400", "bg-amber-400"][i % 3]}`}
+                        >
+                          {p.name.slice(0, 2).toUpperCase()}
+                        </div>
+                      ))}
+                      {properties.length > 3 && (
+                        <span className="text-xs text-slate-400 ml-1 font-medium">+{properties.length - 3}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* PROPERTY PERFORMANCE */}
+                <div className="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
+                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
+                    <h2 className="text-lg font-bold text-[#1E3A5F]">Your Properties</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">How many people have viewed and liked each listing.</p>
+                  </div>
+                  {propertiesLoading ? (
+                    <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">Loading properties...</div>
+                  ) : properties.length === 0 ? (
+                    <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">You haven't listed a property yet.</div>
+                  ) : (
+                    <div className="divide-y divide-slate-50">
+                      {properties.map((p) => (
+                        <div key={p.id} className="px-5 sm:px-6 py-4 flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#EFF6FF] shrink-0">
+                            {p.property_images?.[0]?.image_url && (
+                              <img src={p.property_images[0].image_url} alt={p.name} className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-[#1E3A5F] truncate">{p.name}</p>
+                            <p className="text-xs text-slate-400">{p.city}</p>
+                          </div>
+                          <div className="flex items-center gap-5 shrink-0">
+                            <div className="flex items-center gap-1.5" title="Views">
+                              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                              <span className="text-sm font-bold text-[#1E3A5F]">{p.views ?? 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5" title="Likes">
+                              <svg className="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                              <span className="text-sm font-bold text-[#1E3A5F]">{p.saves_count ?? 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* ── TENANT MANAGEMENT ── */}
-            <div className="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
-              <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100 flex flex-col gap-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">Owner Inquiries</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Separate section for all inquiry requests</p>
+                {/* OWNER INQUIRIES */}
+                <div className="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
+                  <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100 flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <h2 className="text-lg font-bold text-[#1E3A5F]">Owner Inquiries</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Messages from students interested in your properties.</p>
+                      </div>
+                      <div className="relative">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input
+                          type="text"
+                          placeholder="Search inquiries..."
+                          value={inquirySearch}
+                          onChange={(e) => setInquirySearch(e.target.value)}
+                          className="pl-9 pr-4 py-2 bg-[#EFF6FF] border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full sm:w-56"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+
+                  {inquiryLoading && <div className="px-5 sm:px-6 py-5 text-sm text-slate-500">Loading inquiries...</div>}
+                  {!inquiryLoading && inquiryError && <div className="px-5 sm:px-6 py-5 text-sm text-red-500">{inquiryError}</div>}
+                  {!inquiryLoading && !inquiryError && filteredInquiries.length === 0 && (
+                    <div className="px-5 sm:px-6 py-5 text-sm text-slate-500">No inquiries found.</div>
+                  )}
+                  {!inquiryLoading && !inquiryError && filteredInquiries.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-100">
+                            {["Name", "Property", "Phone", "Move-in", "Message", "Status", "Created"].map((h) => (
+                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-6 py-3">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {filteredInquiries.map((item) => (
+                            <tr key={item._id} className={`hover:bg-[#EFF6FF]/70 transition-colors ${isSeen(item) ? "" : "bg-amber-50/30"}`}>
+                              <td className="px-6 py-4 text-sm font-semibold text-[#1E3A5F]">{item?.name || "-"}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700">{item?.property?.name || "-"}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700">{item?.phone || "-"}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700">{formatDate(item?.moveIn)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">{item?.message || "-"}</td>
+                              <td className="px-6 py-4">
+                                <select
+                                  value={item?.status || "new"}
+                                  disabled={updatingInquiryId === item._id}
+                                  onChange={(e) => {
+                                    markInquirySeen(item._id);
+                                    handleUpdateInquiryStatus(item._id, e.target.value);
+                                  }}
+                                  className={`text-[11px] font-bold px-2.5 py-1 rounded-full border cursor-pointer outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 ${item?.status === "closed" ? "bg-[#EFF6FF] text-slate-600 border-slate-200 focus:ring-slate-100" : item?.status === "contacted" ? "bg-green-50 text-green-700 border-green-200 focus:ring-green-100" : item?.status === "seen" ? "bg-amber-50 text-amber-700 border-amber-200 focus:ring-amber-100" : "bg-[#dbeafe] text-blue-700 border-blue-200 focus:ring-blue-100"}`}>
+                                  <option value="new">new</option>
+                                  <option value="contacted">contacted</option>
+                                  <option value="closed">closed</option>
+                                </select>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-500">{formatDate(item?.createdAt)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* BOOKINGS TAB */}
+            {activeNav === "Bookings" && (
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100">
+                  <div>
+                    <h2 className="text-lg font-bold text-[#1E3A5F]">Bookings ({bookings.length})</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Tenants currently booked across your properties.</p>
+                  </div>
+                  <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
                     <input
                       type="text"
-                      placeholder="Search inquiries..."
-                      value={inquirySearch}
-                      onChange={(e) => setInquirySearch(e.target.value)}
-                      className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full"
+                      placeholder="Search tenants..."
+                      value={bookingSearch}
+                      onChange={(e) => setBookingSearch(e.target.value)}
+                      className="pl-9 pr-4 py-2 bg-[#EFF6FF] border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full sm:w-48"
                     />
                   </div>
                 </div>
 
-                <div className="relative max-w-sm">
-                </div>
-              </div>
-
-              {inquiryLoading && (
-                <div className="px-5 sm:px-6 py-5 text-sm text-slate-500">Loading inquiries...</div>
-              )}
-
-              {!inquiryLoading && inquiryError && (
-                <div className="px-5 sm:px-6 py-5 text-sm text-red-500">{inquiryError}</div>
-              )}
-
-              {!inquiryLoading && !inquiryError && filteredInquiries.length === 0 && (
-                <div className="px-5 sm:px-6 py-5 text-sm text-slate-500">No inquiries found.</div>
-              )}
-
-              {!inquiryLoading && !inquiryError && filteredInquiries.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-100">
-                        {[
-                          "Name",
-                          "Property",
-                          "Phone",
-                          "Move-in",
-                          "Message",
-                          "Status",
-                          "Created",
-                        ].map((h) => (
-                          <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-6 py-3">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {filteredInquiries.map((item) => (
-                        <tr key={item._id} className={`hover:bg-slate-50/70 transition-colors ${isSeen(item) ? "" : "bg-amber-50/30"}`}>
-                          <td className="px-6 py-4 text-sm font-semibold text-slate-900">{item?.name || "-"}</td>
-                          <td className="px-6 py-4 text-sm text-slate-700">{item?.property?.name || "-"}</td>
-                          <td className="px-6 py-4 text-sm text-slate-700">{item?.phone || "-"}</td>
-                          <td className="px-6 py-4 text-sm text-slate-700">{formatDate(item?.moveIn)}</td>
-                          <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">{item?.message || "-"}</td>
-                          <td className="px-6 py-4">
-                            <select
-                              value={item?.status || "new"}
-                              disabled={updatingInquiryId === item._id}
-                              onChange={(e) => {
-                                markInquirySeen(item._id);
-                                handleUpdateInquiryStatus(item._id, e.target.value);
-                              }}
-                              className={`text-[11px] font-bold px-2.5 py-1 rounded-full border cursor-pointer outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 ${item?.status === "closed" ? "bg-slate-50 text-slate-600 border-slate-200 focus:ring-slate-100" : item?.status === "contacted" ? "bg-green-50 text-green-700 border-green-200 focus:ring-green-100" : item?.status === "seen" ? "bg-amber-50 text-amber-700 border-amber-200 focus:ring-amber-100" : "bg-blue-50 text-blue-700 border-blue-200 focus:ring-blue-100"}`}>
-                              <option value="new">new</option>
-                              <option value="contacted">contacted</option>
-                              <option value="closed">closed</option>
-                            </select>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-slate-500">{formatDate(item?.createdAt)}</td>
+                {bookingsLoading && <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">Loading bookings...</div>}
+                {!bookingsLoading && bookingsError && <div className="px-5 sm:px-6 py-6 text-sm text-red-500">{bookingsError}</div>}
+                {!bookingsLoading && !bookingsError && filteredBookings.length === 0 && (
+                  <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">No bookings yet.</div>
+                )}
+                {!bookingsLoading && !bookingsError && filteredBookings.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-100">
+                          {["Tenant", "Property & Room", "Move-in", "Monthly Rent", "Status", "Payment"].map((h) => (
+                            <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-6 py-3">{h}</th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* ── TENANT MANAGEMENT ── */}
-            <div className="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100">
-                <h2 className="text-lg font-bold text-slate-900">Tenant Management</h2>
-                <div className="relative">
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Search tenants..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full sm:w-48"
-                  />
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {filteredBookings.map((b) => (
+                          <tr key={b.id} className="hover:bg-[#EFF6FF]/70 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-semibold text-[#1E3A5F]">{b.tenant?.first_name} {b.tenant?.last_name}</p>
+                              <p className="text-xs text-slate-400">{b.tenant?.phone || "-"}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-semibold text-slate-800">{b.properties?.name}</p>
+                              <p className="text-xs text-slate-400">{b.room_type}</p>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-700">{formatDate(b.move_in_date)}</td>
+                            <td className="px-6 py-4 text-sm font-bold text-[#1E3A5F]">{formatCurrency(b.monthly_rent)}</td>
+                            <td className="px-6 py-4">
+                              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${BOOKING_STATUS_STYLES[b.status] || "bg-slate-100 text-slate-600"}`}>{b.status}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${PAYMENT_STATUS_STYLES[b.payment_status] || "bg-slate-100 text-slate-600"}`}>{b.payment_status}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
+            )}
 
-              {/* Table — desktop */}
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      {["Tenant Detail", "Property & Bed", "Status", "Monthly Rent", "Actions"].map((h) => (
-                        <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-6 py-3">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {filtered.map((t) => (
-                      <tr key={t.id} className="hover:bg-slate-50/70 transition-colors group">
-                        {/* Tenant */}
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-full ${t.color} flex items-center justify-center text-xs font-bold shrink-0`}>{t.initials}</div>
-                            <div>
-                              <p className="text-sm font-semibold text-slate-900">{t.name}</p>
-                              <p className="text-xs text-slate-400">{t.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        {/* Property */}
-                        <td className="px-6 py-4">
-                          <p className="text-sm font-semibold text-slate-800">{t.property}</p>
-                          <p className="text-xs text-slate-400">{t.room}</p>
-                        </td>
-                        {/* Status */}
-                        <td className="px-6 py-4">
-                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusStyles[t.status]}`}>{t.status}</span>
-                        </td>
-                        {/* Rent */}
-                        <td className="px-6 py-4">
-                          <p className="text-sm font-bold text-slate-900">{t.rent}</p>
-                          <p className={`text-xs font-medium ${t.rentNoteColor}`}>{t.rentNote}</p>
-                        </td>
-                        {/* Actions */}
-                        <td className="px-6 py-4">
-                          <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all cursor-pointer opacity-0 group-hover:opacity-100">
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="5" r="1" fill="currentColor" /><circle cx="12" cy="12" r="1" fill="currentColor" /><circle cx="12" cy="19" r="1" fill="currentColor" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            {/* PAYMENTS TAB */}
+            {activeNav === "Payments" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Received</p>
+                    <p className="text-3xl font-bold text-[#1E3A5F] mt-1">{payoutsLoading ? "—" : formatCurrency(payoutsTotal)}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "#dbeafe" }}>
+                    <svg className="w-6 h-6" style={{ color: "#1D4ED8" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+                  </div>
+                </div>
 
-              {/* Cards — mobile */}
-              <div className="sm:hidden divide-y divide-slate-100">
-                {filtered.map((t) => (
-                  <div key={t.id} className="px-4 py-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full ${t.color} flex items-center justify-center text-xs font-bold shrink-0`}>{t.initials}</div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">{t.name}</p>
-                          <p className="text-xs text-slate-400">{t.email}</p>
-                        </div>
-                      </div>
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${statusStyles[t.status]}`}>{t.status}</span>
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
+                    <h2 className="text-lg font-bold text-[#1E3A5F]">Payment History</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Rent payments received through PG Connect, after platform fee.</p>
+                  </div>
+                  {payoutsLoading && <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">Loading payments...</div>}
+                  {!payoutsLoading && payoutsError && <div className="px-5 sm:px-6 py-6 text-sm text-red-500">{payoutsError}</div>}
+                  {!payoutsLoading && !payoutsError && payouts.length === 0 && (
+                    <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">No payments received yet.</div>
+                  )}
+                  {!payoutsLoading && !payoutsError && payouts.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-100">
+                            {["Tenant", "Property", "Rent", "Platform Fee", "You Receive", "Date"].map((h) => (
+                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-6 py-3">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {payouts.map((p) => (
+                            <tr key={p.id} className="hover:bg-[#EFF6FF]/70 transition-colors">
+                              <td className="px-6 py-4 text-sm font-semibold text-[#1E3A5F]">
+                                {p.bookings?.tenant?.first_name} {p.bookings?.tenant?.last_name}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-700">{p.properties?.name}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700">{formatCurrency(p.amount)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-400">-{formatCurrency(p.platform_fee)}</td>
+                              <td className="px-6 py-4 text-sm font-bold text-green-700">{formatCurrency(p.owner_payout)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500">{formatDate(p.created_at)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    <div className="flex items-center justify-between text-xs">
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SETTINGS TAB */}
+            {activeNav === "Settings" && (
+              <div className="space-y-6 max-w-xl">
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
+                    <h2 className="text-lg font-bold text-[#1E3A5F]">Account</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">{user?.email}</p>
+                  </div>
+                  <form onSubmit={handleSettingsSave} className="px-5 sm:px-6 py-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="font-semibold text-slate-700">{t.property}</p>
-                        <p className="text-slate-400">{t.room}</p>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">First Name</label>
+                        <input
+                          type="text"
+                          value={settingsForm.first_name}
+                          onChange={(e) => setSettingsForm((f) => ({ ...f, first_name: e.target.value }))}
+                          className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                          style={{ borderColor: "#bfdbfe" }}
+                        />
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-slate-900">{t.rent}</p>
-                        <p className={`font-medium ${t.rentNoteColor}`}>{t.rentNote}</p>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Last Name</label>
+                        <input
+                          type="text"
+                          value={settingsForm.last_name}
+                          onChange={(e) => setSettingsForm((f) => ({ ...f, last_name: e.target.value }))}
+                          className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                          style={{ borderColor: "#bfdbfe" }}
+                        />
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Pagination */}
-              <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-t border-slate-100">
-                <p className="text-xs text-slate-400">Showing 1–{filtered.length} of 109 tenants</p>
-                <div className="flex gap-3">
-                  <button className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors cursor-pointer">Previous</button>
-                  <button className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">Next</button>
-                </div>
-              </div>
-            </div>
-
-            {/* ── PROPERTY INSIGHTS ── */}
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 mb-4">Property Insights</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-                {/* Occupancy Optimization */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 hover:shadow-sm transition-shadow">
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">Occupancy Optimization</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed mb-5">
-                    Your Skyline Heights property has had 100% occupancy for 6 months. Consider a 5% rental adjustment for the next intake cycle.
-                  </p>
-                  {/* Big metric */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center mb-4">
-                    <p className="text-5xl font-bold text-blue-600">96%</p>
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Annual Average</p>
-                  </div>
-                  <button className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors cursor-pointer">
-                    View Full Report
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Smart Pricing */}
-                <div className="bg-blue-600 rounded-2xl p-6 text-white relative overflow-hidden">
-                  {/* Decorative blobs */}
-                  <div className="absolute -top-8 -right-8 w-32 h-32 bg-blue-500 rounded-full opacity-50" />
-                  <div className="absolute -bottom-6 -left-4 w-24 h-24 bg-blue-700 rounded-full opacity-40" />
-
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-1.5 mb-3">
-                      <span className="text-blue-200 text-lg">✦</span>
-                      <span className="text-blue-200 text-sm">✦</span>
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">Smart Pricing is Active</h3>
-                    <p className="text-blue-200 text-sm leading-relaxed mb-6">
-                      Adjusting room prices based on university exam season demand.
-                    </p>
-                    {/* Demand bar */}
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200">Demand Surge</p>
-                        <span className="text-xs font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full">+15%</span>
-                      </div>
-                      <div className="h-2 bg-blue-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-white rounded-full w-[85%] transition-all duration-1000" />
-                      </div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Phone</label>
+                      <input
+                        type="tel"
+                        value={settingsForm.phone}
+                        onChange={(e) => setSettingsForm((f) => ({ ...f, phone: e.target.value }))}
+                        className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                        style={{ borderColor: "#bfdbfe" }}
+                      />
                     </div>
-                    <button className="mt-6 flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                      </svg>
-                      View Pricing Analytics
+                    {settingsMessage && <p className="text-xs" style={{ color: settingsMessage.startsWith("Failed") ? "#dc2626" : "#15803d" }}>{settingsMessage}</p>}
+                    <button
+                      type="submit"
+                      disabled={settingsSaving}
+                      className="text-sm font-semibold px-5 py-2.5 rounded-xl text-white cursor-pointer disabled:opacity-60"
+                      style={{ background: "#1D4ED8" }}
+                    >
+                      {settingsSaving ? "Saving..." : "Save Changes"}
                     </button>
+                  </form>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
+                    <h2 className="text-lg font-bold text-[#1E3A5F]">Change Password</h2>
                   </div>
+                  <form onSubmit={handlePasswordSave} className="px-5 sm:px-6 py-5 space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">New Password</label>
+                      <input
+                        type="password"
+                        value={passwordForm.new_password}
+                        onChange={(e) => setPasswordForm((f) => ({ ...f, new_password: e.target.value }))}
+                        className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                        style={{ borderColor: "#bfdbfe" }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Confirm New Password</label>
+                      <input
+                        type="password"
+                        value={passwordForm.confirm_password}
+                        onChange={(e) => setPasswordForm((f) => ({ ...f, confirm_password: e.target.value }))}
+                        className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                        style={{ borderColor: "#bfdbfe" }}
+                      />
+                    </div>
+                    {passwordMessage && <p className="text-xs" style={{ color: passwordMessage.startsWith("Failed") || passwordMessage.includes("match") || passwordMessage.includes("must be") ? "#dc2626" : "#15803d" }}>{passwordMessage}</p>}
+                    <button
+                      type="submit"
+                      disabled={passwordSaving}
+                      className="text-sm font-semibold px-5 py-2.5 rounded-xl text-white cursor-pointer disabled:opacity-60"
+                      style={{ background: "#1D4ED8" }}
+                    >
+                      {passwordSaving ? "Updating..." : "Update Password"}
+                    </button>
+                  </form>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Spacer */}
             <div className="h-8" />
@@ -766,25 +850,23 @@ awaiting review.
             <footer className="border-t border-slate-200 pt-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <p className="font-serif-display text-sm font-bold text-slate-900">PG Connect</p>
-                  <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
+                  <p className="font-serif-display text-sm font-bold text-[#1E3A5F]">PG Connect</p>
+                  <p className="text-xs text-slate-400 mt-0.5">© {new Date().getFullYear()} PG Connect. Curated Student Living.</p>
                 </div>
                 <div className="flex flex-wrap gap-5">
-                  {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((l) => (
-                    <a key={l} href="#" className="text-xs text-slate-500 hover:text-blue-600 transition-colors">{l}</a>
+                  {[
+                    { label: "Privacy Policy", href: "/privacy" },
+                    { label: "Terms of Service", href: "/terms" },
+                    { label: "Help Center", href: "/help" },
+                    { label: "Contact Us", href: "/contact" },
+                  ].map((l) => (
+                    <Link key={l.label} href={l.href} className="text-xs text-slate-500 hover:text-[#1D4ED8] transition-colors">{l.label}</Link>
                   ))}
                 </div>
               </div>
             </footer>
           </main>
         </div>
-
-        {/* Floating chat button */}
-        <button className="fixed bottom-5 right-5 z-40 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95 cursor-pointer">
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </button>
       </div>
     </>
   );

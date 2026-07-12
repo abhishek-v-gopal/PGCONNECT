@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { cache } from "react";
 import InquiryForm from "./InquiryForm";
+import ReviewForm from "./ReviewForm";
+import Gallery from "./Gallery";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
+import Reveal from "../../components/Reveal";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&q=80";
 
 const AMENITY_ICONS = {
@@ -44,7 +49,7 @@ const AMENITY_ICONS = {
   ),
 };
 
-const formatCurrency = (value) => `INR ${Number(value || 0).toLocaleString("en-IN")}`;
+const formatCurrency = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
 const getAmenityIconKey = (amenity) => {
   const normalized = String(amenity || "").toLowerCase().replace(/[^a-z]/g, "");
@@ -70,10 +75,20 @@ const getPropertyById = cache(async (id) => {
   return data?.property || null;
 });
 
+const getPropertyReviews = cache(async (id) => {
+  const response = await fetch(`${API_URL}/api/reviews/property/${id}`, {
+    next: { revalidate: 60 },
+  });
+
+  if (!response.ok) return { reviews: [], total: 0 };
+  const data = await response.json();
+  return { reviews: data?.reviews ?? [], total: data?.total ?? 0 };
+});
+
 const buildPropertyDescription = (property) => {
-  const city = property?.location?.city || "India";
-  const price = Number(property?.startingPrice || 0).toLocaleString("en-IN");
-  const available = property?.availableBeds ?? 0;
+  const city = property?.city || "India";
+  const price = Number(property?.starting_price || 0).toLocaleString("en-IN");
+  const available = property?.available_beds ?? 0;
   const tagline = property?.tagline || "Verified PG with detailed amenities and room information.";
 
   return `${tagline} Located in ${city}. Starting from INR ${price} per month with ${available} beds currently available.`;
@@ -81,19 +96,19 @@ const buildPropertyDescription = (property) => {
 
 const buildStructuredData = (property, propertyId, images) => {
   const url = `${SITE_URL}/property/${propertyId}`;
-  const aggregateRating = property?.totalRatings > 0
+  const aggregateRating = property?.total_ratings > 0
     ? {
       "@type": "AggregateRating",
       ratingValue: property.rating || 0,
-      ratingCount: property.totalRatings,
+      ratingCount: property.total_ratings,
     }
     : undefined;
 
-  const roomOffers = (property?.rooms || []).map((room) => ({
+  const roomOffers = (property?.property_rooms || []).map((room) => ({
     "@type": "Offer",
     priceCurrency: "INR",
     price: room.price || 0,
-    availability: room.availableBeds > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+    availability: room.available_beds > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
     itemOffered: {
       "@type": "Accommodation",
       name: `${property.name} - ${room.type}`,
@@ -110,12 +125,12 @@ const buildStructuredData = (property, propertyId, images) => {
     image: images,
     address: {
       "@type": "PostalAddress",
-      streetAddress: property?.location?.address || "",
-      addressLocality: property?.location?.city || "",
-      addressRegion: property?.location?.landmark || "",
+      streetAddress: property?.address || "",
+      addressLocality: property?.city || "",
+      addressRegion: property?.landmark || "",
       addressCountry: "IN",
     },
-    telephone: property?.manager?.phone || property?.owner?.phone || "",
+    telephone: property?.manager_phone || property?.owner?.phone || "",
     amenityFeature: (property?.amenities || []).map((amenity) => ({
       "@type": "LocationFeatureSpecification",
       name: amenity,
@@ -141,8 +156,8 @@ export async function generateMetadata({ params }) {
     };
   }
 
-  const image = property?.images?.[0] || FALLBACK_IMAGE;
-  const title = `${property.name} in ${property?.location?.city || "India"}`;
+  const image = property?.property_images?.[0]?.image_url || FALLBACK_IMAGE;
+  const title = `${property.name} in ${property?.city || "India"}`;
   const description = buildPropertyDescription(property);
   const canonical = `/property/${id}`;
 
@@ -151,8 +166,8 @@ export async function generateMetadata({ params }) {
     description,
     keywords: [
       property.name,
-      property?.location?.city,
-      property?.location?.address,
+      property?.city,
+      property?.address,
       `${property?.gender || "co-ed"} pg`,
       "verified pg",
       "co-living",
@@ -189,97 +204,90 @@ export default async function PropertyDetailPage({ params }) {
 
   if (!property) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center text-slate-600">
-        <div>
-          <p className="text-lg font-semibold text-slate-800">Property not found</p>
-          <p className="mt-2 text-sm">The listing may have been removed or the URL is invalid.</p>
-          <Link href="/propertys" className="mt-5 inline-block rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-600">
-            Back to Listings
-          </Link>
+      <div className="min-h-screen bg-[#EFF6FF] text-[#1E3A5F]">
+        <Navbar />
+        <div className="flex items-center justify-center px-4 py-24 text-center text-[#1E3A5F80]">
+          <div>
+            <p className="text-lg font-semibold text-[#1E3A5F]">Property not found</p>
+            <p className="mt-2 text-sm">The listing may have been removed or the URL is invalid.</p>
+            <Link href="/propertys" className="mt-5 inline-block rounded-full border border-[#bfdbfe] px-4 py-2 text-sm font-semibold text-[#1E3A5F] hover:border-blue-300 hover:text-[#1D4ED8]">
+              Back to Listings
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
-  const images = property?.images?.length ? property.images : [FALLBACK_IMAGE];
-  const rooms = Array.isArray(property?.rooms) ? property.rooms : [];
+  const { reviews, total: reviewsTotal } = await getPropertyReviews(id);
+  const images = property?.property_images?.length
+    ? property.property_images.slice().sort((a, b) => a.position - b.position).map((img) => img.image_url)
+    : [FALLBACK_IMAGE];
+  const rooms = Array.isArray(property?.property_rooms) ? property.property_rooms : [];
   const amenities = Array.isArray(property?.amenities) ? property.amenities : [];
   const schema = buildStructuredData(property, id, images);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-[#EFF6FF] text-[#1E3A5F]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="text-lg font-bold text-blue-600">PG Connect</Link>
-          <Link href="/propertys" className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-600">
-            Back to Listings
-          </Link>
-        </div>
-      </header>
+      <Navbar />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <Link href="/propertys" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1D4ED8] hover:opacity-80 transition-opacity">
+          &larr; Back to Listings
+        </Link>
         <div className="space-y-6">
-          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <Reveal as="section" className="overflow-hidden rounded-3xl border border-[#bfdbfe] bg-white shadow-sm">
             <div className="grid gap-0 lg:grid-cols-[1.4fr_0.8fr]">
-              <div className="bg-slate-100">
-                <img src={images[0]} alt={property.name} className="h-[320px] w-full object-cover sm:h-[420px]" />
-                {images.length > 1 && (
-                  <div className="grid grid-cols-3 gap-2 p-3 sm:grid-cols-5">
-                    {images.slice(0, 10).map((image, index) => (
-                      <img key={`${image}-${index}`} src={image} alt={`${property.name} image ${index + 1}`} className="h-20 w-full rounded-xl object-cover" />
-                    ))}
-                  </div>
-                )}
-              </div>
+              <Gallery images={images} name={property.name} />
 
               <div className="flex flex-col justify-between gap-6 p-6 sm:p-8">
                 <div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest text-blue-600">
-                    {/* <span className="rounded-full bg-blue-50 px-3 py-1">{property.status || "verified"}</span> */}
-                    {property.isVerified && <span className="rounded-full bg-green-50 px-3 py-1 text-green-700">Verified</span>}
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#1D4ED8]">
+                    {/* <span className="rounded-full bg-[#dbeafe] px-3 py-1">{property.status || "verified"}</span> */}
+                    {property.is_verified && <span className="rounded-full bg-green-50 px-3 py-1 text-green-700">Verified</span>}
                   </div>
                   <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">{property.name}</h1>
-                  <p className="mt-2 text-base text-slate-600">{property.tagline}</p>
+                  <p className="mt-2 text-base text-[#1E3A5F80]">{property.tagline}</p>
 
-                  <div className="mt-5 space-y-3 text-sm text-slate-600">
-                    <p><span className="font-semibold text-slate-900">Location:</span> {property.location?.address || "-"}, {property.location?.city || "-"}</p>
-                    <p><span className="font-semibold text-slate-900">Landmark:</span> {property.location?.landmark || "-"}</p>
-                    <p><span className="font-semibold text-slate-900">Manager:</span> {property.manager?.name || "-"} {property.manager?.phone ? `(${property.manager.phone})` : ""}</p>
+                  <div className="mt-5 space-y-3 text-sm text-[#1E3A5F80]">
+                    <p><span className="font-semibold text-[#1E3A5F]">Location:</span> {property.address || "-"}, {property.city || "-"}</p>
+                    <p><span className="font-semibold text-[#1E3A5F]">Landmark:</span> {property.landmark || "-"}</p>
+                    <p><span className="font-semibold text-[#1E3A5F]">Manager:</span> {property.manager_name || "-"} {property.manager_phone ? `(${property.manager_phone})` : ""}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4">
+                <div className="grid grid-cols-2 gap-3 rounded-2xl bg-[#EFF6FF] p-4">
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-slate-400">Starting price</p>
-                    <p className="mt-1 text-xl font-bold text-slate-900">{formatCurrency(property.startingPrice)}</p>
+                    <p className="text-xs uppercase tracking-widest text-[#1E3A5F60]">Starting price</p>
+                    <p className="mt-1 text-xl font-bold text-[#1E3A5F]">{formatCurrency(property.starting_price)}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-slate-400">Beds available</p>
-                    <p className="mt-1 text-xl font-bold text-slate-900">{property.availableBeds ?? 0}</p>
+                    <p className="text-xs uppercase tracking-widest text-[#1E3A5F60]">Beds available</p>
+                    <p className="mt-1 text-xl font-bold text-[#1E3A5F]">{property.available_beds ?? 0}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-slate-400">Rating</p>
-                    <p className="mt-1 text-xl font-bold text-slate-900">{property.rating || 0}</p>
+                    <p className="text-xs uppercase tracking-widest text-[#1E3A5F60]">Rating</p>
+                    <p className="mt-1 text-xl font-bold text-[#1E3A5F]">{property.rating || 0}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-slate-400">Views</p>
-                    <p className="mt-1 text-xl font-bold text-slate-900">{property.views || 0}</p>
+                    <p className="text-xs uppercase tracking-widest text-[#1E3A5F60]">Views</p>
+                    <p className="mt-1 text-xl font-bold text-[#1E3A5F]">{property.views || 0}</p>
                   </div>
                 </div>
               </div>
             </div>
-          </section>
+          </Reveal>
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <Reveal direction="right" className="rounded-3xl border border-[#bfdbfe] bg-white p-6 shadow-sm">
               <h2 className="text-xl font-bold">Amenities</h2>
               <div className="mt-4 flex flex-wrap gap-2">
                 {amenities.map((amenity) => {
                   const iconKey = getAmenityIconKey(amenity);
                   return (
-                    <span key={amenity} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    <span key={amenity} className="inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-[#EFF6FF] px-3 py-2 text-sm text-[#1E3A5F] transition-colors hover:border-[#1D4ED8]">
                       {iconKey ? AMENITY_ICONS[iconKey] : null}
                       {amenity}
                     </span>
@@ -290,58 +298,109 @@ export default async function PropertyDetailPage({ params }) {
               <h2 className="mt-8 text-xl font-bold">Rooms</h2>
               <div className="mt-4 space-y-3">
                 {rooms.map((room) => (
-                  <div key={room._id || room.type} className="rounded-2xl border border-slate-200 p-4">
+                  <div key={room.id || room.type} className="rounded-2xl border border-[#bfdbfe] p-4 transition-all hover:border-[#1D4ED8] hover:shadow-md">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-slate-900">{room.type}</p>
-                        <p className="mt-1 text-sm text-slate-600">{room.description || "No room description provided."}</p>
+                        <p className="font-semibold text-[#1E3A5F]">{room.type}</p>
+                        <p className="mt-1 text-sm text-[#1E3A5F80]">{room.description || "No room description provided."}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-slate-900">{formatCurrency(room.price)}</p>
-                        <p className="text-sm text-slate-500">{room.availableBeds}/{room.totalBeds} beds available</p>
+                        <p className="text-lg font-bold text-[#1E3A5F]">{formatCurrency(room.price)}</p>
+                        <p className="text-sm text-[#1E3A5F60]">{room.available_beds}/{room.total_beds} beds available</p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Reveal>
 
-            <aside className="space-y-6">
-              <InquiryForm propertyId={String(property?._id || id)} />
+            <Reveal direction="left" delay={0.1} as="aside" className="space-y-6">
+              <InquiryForm propertyId={id} />
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="rounded-3xl border border-[#bfdbfe] bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-bold">Manager</h2>
-                <div className="mt-4 space-y-2 text-sm text-slate-600">
-                  <p className="font-semibold text-slate-900">{property.manager?.name || "-"}</p>
-                  <p>{property.manager?.phone || "-"}</p>
+                <div className="mt-4 space-y-2 text-sm text-[#1E3A5F80]">
+                  <p className="font-semibold text-[#1E3A5F]">{property.manager_name || "-"}</p>
+                  <p>{property.manager_phone || "-"}</p>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="rounded-3xl border border-[#bfdbfe] bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-bold">Property Stats</h2>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-2xl bg-slate-50 p-3">
-                    <p className="text-slate-500">Total beds</p>
-                    <p className="mt-1 text-lg font-bold">{property.totalBeds || 0}</p>
+                  <div className="rounded-2xl bg-[#EFF6FF] p-3">
+                    <p className="text-[#1E3A5F60]">Total beds</p>
+                    <p className="mt-1 text-lg font-bold">{property.total_beds || 0}</p>
                   </div>
-                  <div className="rounded-2xl bg-slate-50 p-3">
-                    <p className="text-slate-500">Inquiries</p>
-                    <p className="mt-1 text-lg font-bold">{property.inquiries || 0}</p>
+                  <div className="rounded-2xl bg-[#EFF6FF] p-3">
+                    <p className="text-[#1E3A5F60]">Inquiries</p>
+                    <p className="mt-1 text-lg font-bold">{property.inquiries_count || 0}</p>
                   </div>
-                  <div className="rounded-2xl bg-slate-50 p-3">
-                    <p className="text-slate-500">Ratings</p>
-                    <p className="mt-1 text-lg font-bold">{property.totalRatings || 0}</p>
+                  <div className="rounded-2xl bg-[#EFF6FF] p-3">
+                    <p className="text-[#1E3A5F60]">Ratings</p>
+                    <p className="mt-1 text-lg font-bold">{property.total_ratings || 0}</p>
                   </div>
-                  <div className="rounded-2xl bg-slate-50 p-3">
-                    <p className="text-slate-500">Gender</p>
+                  <div className="rounded-2xl bg-[#EFF6FF] p-3">
+                    <p className="text-[#1E3A5F60]">Gender</p>
                     <p className="mt-1 text-lg font-bold">{property.gender || "-"}</p>
                   </div>
                 </div>
               </div>
-            </aside>
+            </Reveal>
+          </section>
+
+          <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <Reveal direction="right" className="rounded-3xl border border-[#bfdbfe] bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Reviews</h2>
+                {property.total_ratings > 0 && (
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-[#1E3A5F]">
+                    <span style={{ color: "#F97316" }}>★</span> {property.rating} <span className="font-normal text-[#1E3A5F60]">({property.total_ratings})</span>
+                  </span>
+                )}
+              </div>
+
+              {reviews.length === 0 ? (
+                <p className="mt-4 text-sm text-[#1E3A5F80]">No reviews yet. Be the first to share your experience.</p>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  {reviews.map((r) => (
+                    <div key={r.id} className="rounded-2xl border border-[#bfdbfe] p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-[#1E3A5F]">
+                            {r.tenant?.first_name || "Anonymous"} {r.tenant?.last_name?.[0] ? `${r.tenant.last_name[0]}.` : ""}
+                          </p>
+                          <div className="mt-0.5 flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <span key={s} style={{ color: s <= r.rating ? "#F97316" : "#e2e8f0" }}>★</span>
+                            ))}
+                            {r.is_verified_stay && (
+                              <span className="ml-2 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-700">Verified Stay</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-xs text-[#1E3A5F60]">
+                          {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                      {r.comment && <p className="mt-2 text-sm text-[#1E3A5F80]">{r.comment}</p>}
+                    </div>
+                  ))}
+                  {reviewsTotal > reviews.length && (
+                    <p className="text-xs text-[#1E3A5F60]">Showing {reviews.length} of {reviewsTotal} reviews</p>
+                  )}
+                </div>
+              )}
+            </Reveal>
+
+            <Reveal direction="left" delay={0.1}>
+              <ReviewForm propertyId={id} />
+            </Reveal>
           </section>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

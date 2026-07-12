@@ -1,0 +1,11 @@
+name = "pgconnect-backend"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "pgconnect-assets"
+
+# Local dev: put secrets in .dev.vars (gitignored)
+# Production: wrangler secret put SUPABASE_URL etc.

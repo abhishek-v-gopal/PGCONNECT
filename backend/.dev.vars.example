@@ -1,0 +1,25 @@
+# ─── Supabase ────────────────────────────────────────────────────────────────
+# Dashboard → Settings → API
+# "Project URL"
+SUPABASE_URL=https://xxxxxxxxxxxxxxxxxxxx.supabase.co
+
+# "service_role" secret key (NOT anon key — this bypasses RLS)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# ─── Cloudflare R2 ───────────────────────────────────────────────────────────
+# R2 is configured via wrangler.toml (binding = "R2"), not env vars.
+# If using a public custom domain for R2, add it here:
+# R2_PUBLIC_URL=https://assets.yourdomain.com
+
+# ─── Razorpay ────────────────────────────────────────────────────────────────
+# Dashboard → Settings → API Keys
+# Use rzp_test_... for testing, rzp_live_... for production
+RAZORPAY_KEY_ID=rzp_test_XXXXXXXXXXXXXXXX
+RAZORPAY_KEY_SECRET=XXXXXXXXXXXXXXXXXXXXXXXX
+
+# Dashboard → Settings → Webhooks → Webhook Secret
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret_here
+
+# ─── App ─────────────────────────────────────────────────────────────────────
+# URL of the Next.js frontend (used for CORS)
+CLIENT_URL=http://localhost:3000

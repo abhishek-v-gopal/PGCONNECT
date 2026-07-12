@@ -1,218 +1,247 @@
-import axios from "axios";
+import { supabase, getAuthToken } from '../../lib/supabase'
 
-const BASE_URL = "http://localhost:5000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
 
-// send cookies (session) for authorized endpoints
-axios.defaults.withCredentials = true;
+// ── Authenticated fetch helper ────────────────────────────────────────────────
+const authFetch = async (path, options = {}) => {
+  const token = await getAuthToken()
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers ?? {}),
+  }
 
-const getCookieValue = (name) => {
-    if (typeof document === "undefined") return "";
-    const cookies = document.cookie ? document.cookie.split(";") : [];
-    for (const item of cookies) {
-        const [k, ...rest] = item.trim().split("=");
-        if (k === name) return decodeURIComponent(rest.join("="));
-    }
-    return "";
-};
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers })
+  const data = await res.json()
 
-const getAuthHeaders = () => {
-    const token =
-        getCookieValue("token") ||
-        getCookieValue("authToken") ||
-        getCookieValue("jwt") ||
-        "";
-
-    return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
-const getAuthConfig = () => ({
-    withCredentials: true,
-    headers: getAuthHeaders(),
-});
-
-// Normalize axios errors into a consistent Error with `status` and `data`
-const parseAxiosError = (error) => {
-    const status = error?.response?.status;
-    const data = error?.response?.data;
-    const message = data?.message || error?.message || 'Request failed';
-    const e = new Error(message);
-    e.status = status;
-    e.data = data;
-    return e;
-};
-
-
-
-//login
-export const userLogin = async (userData) => {
-    try {
-        const url = `${BASE_URL}/api/auth/login`;
-        console.log('[DEBUG] Login attempt:', { url, userData });
-        
-        const response = await axios.post(url, userData);
-        console.log('Login successful:', response.data);
-        return response.data;
-
-    } catch (error) {
-        console.error('[DEBUG] Login failed - Full error:', {
-            status: error?.response?.status,
-            statusText: error?.response?.statusText,
-            data: error?.response?.data,
-            message: error?.message,
-            config: { url: error?.config?.url, method: error?.config?.method }
-        });
-        throw error;
-    }
+  if (!res.ok) {
+    const err = new Error(data?.message || 'Request failed')
+    err.status = res.status
+    err.data = data
+    throw err
+  }
+  return data
 }
-//register
-export const userRegister = async (userData) => {
-    try {
-        const response = await axios.post(`${BASE_URL}/api/auth/register`, userData);
-        console.log('Registration successful:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('Error during registration:', {
-            status: error?.response?.status,
-            data: error?.response?.data,
-            message: error?.message,
-        });
-        throw parseAxiosError(error);
-    }
+
+const authFetchForm = async (path, formData) => {
+  const token = await getAuthToken()
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+  const res = await fetch(`${BASE_URL}${path}`, { method: 'POST', headers, body: formData })
+  const data = await res.json()
+  if (!res.ok) {
+    const err = new Error(data?.message || 'Request failed')
+    err.status = res.status
+    throw err
+  }
+  return data
 }
-//logout
+
+// ── AUTH (Supabase client-side) ───────────────────────────────────────────────
+export const userRegister = async ({ email, password, first_name, last_name, role, phone, university }) => {
+  // Step 1: register with Supabase Auth + create profile via backend
+  const res = await fetch(`${BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, first_name, last_name, role, phone, university }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data?.message || 'Registration failed')
+
+  // Step 2: sign in to get session
+  if (data.token) {
+    await supabase.auth.setSession({ access_token: data.token, refresh_token: data.token })
+  }
+  return data
+}
+
+export const userLogin = async ({ email, password }) => {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw new Error(error.message)
+
+  // fetch profile from backend
+  const profile = await authFetch('/api/auth/me')
+  return { ...data, user: profile.user }
+}
+
 export const logout = async () => {
-    try {
-        const response = await axios.post(`${BASE_URL}/api/auth/logout`);
-        console.log('Logout successful:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('Error during logout:', error);
-        throw error;
-    }
-}   
-//get current user
-export const getCurrentUser = async () => {
-    try {
-        const response = await axios.get(`${BASE_URL}/api/auth/me`);
-        console.log('Current user:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching current user:', error);
-        throw error;
-    }
-}
-//update password
-export const updatePassword = async (passwordData) => {
-    try {
-        const response = await axios.post(`${BASE_URL}/api/auth/update-password`, passwordData);
-        console.log('Password update successful:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('Error updating password:', error);
-        throw error;
-    }
+  await supabase.auth.signOut()
+  return { success: true }
 }
 
-export const getAllProperties = async () => {
-    try {
-        const response = await axios.get(`${BASE_URL}/api/properties`);
-        console.log('All properties:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching properties:', error);
-        throw error;
-    }
+export const getCurrentUser = async () => {
+  return authFetch('/api/auth/me')
+}
+
+export const updatePassword = async ({ new_password }) => {
+  return authFetch('/api/auth/update-password', {
+    method: 'PATCH',
+    body: JSON.stringify({ new_password }),
+  })
+}
+
+// ── PROPERTIES ────────────────────────────────────────────────────────────────
+export const getAllProperties = async (params = {}) => {
+  const qs = new URLSearchParams(params).toString()
+  return fetch(`${BASE_URL}/api/properties${qs ? '?' + qs : ''}`).then((r) => r.json())
 }
 
 export const getPropertyById = async (propertyId) => {
-    try {
-        const response = await axios.get(`${BASE_URL}/api/properties/${propertyId}`);
-        console.log(`Property ${propertyId}:`, response.data);
-        return response.data;
-    } catch (error) {
-        console.error(`Error fetching property ${propertyId}:`, error);
-        throw error;
-    }   
+  return fetch(`${BASE_URL}/api/properties/${propertyId}`).then((r) => r.json())
 }
 
-export const saveProperty = async (propertyId) => {
-    try {
-        const response = await axios.post(`${BASE_URL}/api/users/save/${propertyId}`, {}, getAuthConfig());
-        console.log('[DEBUG] saveProperty response:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('[DEBUG] Error saving property:', error);
-        throw error;
-    }
+export const createProperty = async (formData) => {
+  return authFetchForm('/api/properties', formData)
 }
 
-export const createInquiry = async (inquiryData) => {
-    try {
-        const response = await axios.post(`${BASE_URL}/api/inquiries`, inquiryData, getAuthConfig());
-        console.log('[DEBUG] createInquiry response:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('[DEBUG] Error creating inquiry:', error);
-        throw error;
-    }
+export const updateProperty = async (propertyId, data) => {
+  return authFetch(`/api/properties/${propertyId}`, { method: 'PATCH', body: JSON.stringify(data) })
 }
 
-export const createProperty = async (propertyData) => {
-    try {
-        const response = await axios.post(`${BASE_URL}/api/properties`, propertyData, getAuthConfig());
-        console.log('[DEBUG] createProperty response:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('[DEBUG] Error creating property:', error);
-        throw parseAxiosError(error);
-    }
-}
-
-export const getOwnerInquiries = async () => {
-    try {
-        const response = await axios.get(`${BASE_URL}/api/inquiries/owner`, getAuthConfig());
-        console.log('[DEBUG] getOwnerInquiries response:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('[DEBUG] Error fetching owner inquiries:', error);
-        throw error;
-    }
-}
-
-export const updateInquiryStatus = async (inquiryId, status) => {
-    try {
-        const response = await axios.patch(
-            `${BASE_URL}/api/inquiries/${inquiryId}`,
-            { status },
-            getAuthConfig()
-        );
-        console.log('[DEBUG] updateInquiryStatus response:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('[DEBUG] Error updating inquiry status:', error);
-        throw error;
-    }
+export const deleteProperty = async (propertyId) => {
+  return authFetch(`/api/properties/${propertyId}`, { method: 'DELETE' })
 }
 
 export const getOwnerProperties = async () => {
-    try {
-        const response = await axios.get(`${BASE_URL}/api/properties/owner/mine`, getAuthConfig());
-        console.log('[DEBUG] getOwnerProperties response:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('[DEBUG] Error fetching owner properties:', error);
-        throw error;
-    }   
+  return authFetch('/api/properties/owner/mine')
 }
 
+// ── USERS ─────────────────────────────────────────────────────────────────────
+export const saveProperty = async (propertyId) => {
+  return authFetch(`/api/users/save/${propertyId}`, { method: 'POST' })
+}
 
-export const verifyProperty = async (propertyId) => {
-    try {
-        const response = await axios.post(`${BASE_URL}/api/properties/${propertyId}/verify`, {}, getAuthConfig());
-        console.log('[DEBUG] verifyProperty response:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error('[DEBUG] Error verifying property:', error);
-        throw error;
-    }
+export const getSavedProperties = async () => {
+  return authFetch('/api/users/saved')
+}
+
+export const updateProfile = async (profileData) => {
+  return authFetch('/api/users/profile', { method: 'PATCH', body: JSON.stringify(profileData) })
+}
+
+// ── BOOKINGS ──────────────────────────────────────────────────────────────────
+export const createBooking = async (bookingData) => {
+  return authFetch('/api/bookings', { method: 'POST', body: JSON.stringify(bookingData) })
+}
+
+export const getMyBookings = async () => {
+  return authFetch('/api/bookings/mine')
+}
+
+export const getOwnerBookings = async () => {
+  return authFetch('/api/bookings/owner')
+}
+
+export const updateBooking = async (bookingId, updates) => {
+  return authFetch(`/api/bookings/${bookingId}`, { method: 'PATCH', body: JSON.stringify(updates) })
+}
+
+// ── INQUIRIES ─────────────────────────────────────────────────────────────────
+export const createInquiry = async (inquiryData) => {
+  return authFetch('/api/inquiries', { method: 'POST', body: JSON.stringify(inquiryData) })
+}
+
+export const getOwnerInquiries = async () => {
+  return authFetch('/api/inquiries/owner')
+}
+
+export const updateInquiryStatus = async (inquiryId, status) => {
+  return authFetch(`/api/inquiries/${inquiryId}`, { method: 'PATCH', body: JSON.stringify({ status }) })
+}
+
+// ── REFERRAL ──────────────────────────────────────────────────────────────────
+export const getReferralCode = async () => {
+  return authFetch('/api/referral/my-code')
+}
+
+export const getReferralStats = async () => {
+  return authFetch('/api/referral/stats')
+}
+
+export const getReferralCommissions = async (page = 1) => {
+  return authFetch(`/api/referral/commissions?page=${page}`)
+}
+
+export const updateCommissionType = async (commission_type) => {
+  return authFetch('/api/referral/commission-type', { method: 'PATCH', body: JSON.stringify({ commission_type }) })
+}
+
+export const requestPayout = async () => {
+  return authFetch('/api/referral/request-payout', { method: 'POST' })
+}
+
+// ── PAYMENTS ──────────────────────────────────────────────────────────────────
+export const createPaymentOrder = async (booking_id) => {
+  return authFetch('/api/payments/create-order', { method: 'POST', body: JSON.stringify({ booking_id }) })
+}
+
+export const verifyPayment = async (paymentData) => {
+  return authFetch('/api/payments/verify', { method: 'POST', body: JSON.stringify(paymentData) })
+}
+
+export const getPaymentHistory = async () => {
+  return authFetch('/api/payments/history')
+}
+
+export const getOwnerPayouts = async () => {
+  return authFetch('/api/payments/owner-payouts')
+}
+
+// ── REVIEWS ───────────────────────────────────────────────────────────────────
+export const getPropertyReviews = async (propertyId, page = 1) => {
+  return fetch(`${BASE_URL}/api/reviews/property/${propertyId}?page=${page}`).then((r) => r.json())
+}
+
+export const createReview = async ({ property_id, rating, comment }) => {
+  return authFetch('/api/reviews', {
+    method: 'POST',
+    body: JSON.stringify({ property_id, rating, comment }),
+  })
+}
+
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+export const getAdminStats = async () => {
+  return authFetch('/api/admin/stats')
+}
+
+export const getVerificationQueue = async (status = 'pending', page = 1) => {
+  return authFetch(`/api/admin/verification-queue?status=${status}&page=${page}`)
+}
+
+export const getAdminProperties = async (sort = 'views', page = 1) => {
+  return authFetch(`/api/admin/properties?sort=${sort}&page=${page}`)
+}
+
+export const verifyProperty = async (propertyId, action, rejection_reason) => {
+  return authFetch(`/api/admin/properties/${propertyId}/verify`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action, rejection_reason }),
+  })
+}
+
+export const getAdminUsers = async (params = {}) => {
+  const qs = new URLSearchParams(params).toString()
+  return authFetch(`/api/admin/users${qs ? '?' + qs : ''}`)
+}
+
+export const toggleUser = async (userId) => {
+  return authFetch(`/api/admin/users/${userId}/toggle`, { method: 'PATCH' })
+}
+
+export const getAdminCommissions = async (page = 1) => {
+  return authFetch(`/api/admin/commissions?page=${page}`)
+}
+
+export const getAdminPayments = async (page = 1) => {
+  return authFetch(`/api/admin/payments?page=${page}`)
+}
+
+export const getAdminReviews = async (status = 'pending', page = 1) => {
+  return authFetch(`/api/admin/reviews?status=${status}&page=${page}`)
+}
+
+export const moderateReview = async (reviewId, action) => {
+  return authFetch(`/api/admin/reviews/${reviewId}/moderate`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action }),
+  })
 }

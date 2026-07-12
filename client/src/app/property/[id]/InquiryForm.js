@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { createInquiry } from "../../api";
 
 export default function InquiryForm({ propertyId }) {
@@ -31,22 +32,22 @@ export default function InquiryForm({ propertyId }) {
     try {
       setSubmitting(true);
       const payload = {
-        propertyId,
+        property_id: propertyId,
         name: form.name.trim(),
         phone: form.phone.trim(),
-        moveIn: form.moveIn,
+        move_in: form.moveIn,
         message: form.message.trim(),
       };
 
       const response = await createInquiry(payload);
-      if (response?.success || response?._id || response?.message) {
+      if (response?.success) {
         setFeedback("Inquiry sent successfully.");
         setForm({ name: "", phone: "", moveIn: "", message: "" });
       } else {
         setFeedback("Unable to send inquiry right now.");
       }
     } catch (error) {
-      const status = error?.response?.status;
+      const status = error?.status;
       if (status === 401 || status === 403) {
         router.push("/signin");
         return;
@@ -89,17 +90,36 @@ export default function InquiryForm({ propertyId }) {
           className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
         />
 
-        {feedback && (
-          <p className="text-xs text-slate-600">{feedback}</p>
-        )}
+        <AnimatePresence>
+          {feedback && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="text-xs text-slate-600 overflow-hidden"
+            >
+              {feedback}
+            </motion.p>
+          )}
+        </AnimatePresence>
 
-        <button
+        <motion.button
+          whileHover={{ scale: submitting ? 1 : 1.02 }}
+          whileTap={{ scale: submitting ? 1 : 0.97 }}
           type="submit"
           disabled={submitting}
-          className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70 shadow-sm hover:shadow-md"
         >
-          {submitting ? "Sending..." : "Send Inquiry"}
-        </button>
+          {submitting ? (
+            <span className="inline-flex items-center gap-2">
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              Sending...
+            </span>
+          ) : "Send Inquiry"}
+        </motion.button>
       </form>
     </div>
   );

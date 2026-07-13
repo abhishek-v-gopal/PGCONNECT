@@ -103,25 +103,22 @@ adminRouter.get('/verification-queue', async (c) => {
 adminRouter.patch('/properties/:id/verify', async (c) => {
   const user = c.get('user')
   const supabase = getSupabase(c.env)
-  const { action, rejection_reason } = await c.req.json()
+  const { action } = await c.req.json()
 
-  if (!['approve', 'reject', 'review'].includes(action)) {
-    return c.json({ success: false, message: 'action must be approve, reject, or review' }, 400)
+  if (!['enable', 'disable'].includes(action)) {
+    return c.json({ success: false, message: 'action must be enable or disable' }, 400)
   }
 
   const updates: Record<string, unknown> = {}
-  if (action === 'approve') {
+  if (action === 'enable') {
     updates.status = 'verified'
     updates.is_verified = true
     updates.verified_at = new Date().toISOString()
     updates.verified_by = user.id
     updates.rejection_reason = null
-  } else if (action === 'reject') {
-    updates.status = 'rejected'
-    updates.is_verified = false
-    updates.rejection_reason = rejection_reason ?? 'Does not meet platform standards'
   } else {
-    updates.status = 'in_review'
+    updates.status = 'unlisted'
+    updates.is_verified = false
   }
 
   const { data, error } = await supabase

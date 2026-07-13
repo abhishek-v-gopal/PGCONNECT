@@ -63,6 +63,8 @@ const mapProperty = (property) => {
     id: property?.id,
     name: property?.name || "Untitled Property",
     location: property?.address || property?.city || "Unknown location",
+    city: property?.city || "",
+    state: property?.state || "",
     distance: property?.city && property?.landmark
       ? `${property.city} • ${property.landmark}`
       : property?.city || property?.landmark || "",
@@ -173,7 +175,12 @@ function SearchResultsContent() {
       if (amenities.length > 0 && !amenities.every((a) => p.amenities.includes(a))) return false;
       if (moveIn && p.availableBeds <= 0) return false;
       const searchValue = search.toLowerCase();
-      if (searchValue && !p.name.toLowerCase().includes(searchValue) && !p.location.toLowerCase().includes(searchValue)) return false;
+      if (searchValue
+        && !p.name.toLowerCase().includes(searchValue)
+        && !p.location.toLowerCase().includes(searchValue)
+        && !p.city.toLowerCase().includes(searchValue)
+        && !p.state.toLowerCase().includes(searchValue)
+      ) return false;
       return true;
     })
     .sort((a, b) => {

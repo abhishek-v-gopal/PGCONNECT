@@ -8,6 +8,7 @@ import {
   updateInquiryStatus,
   getOwnerProperties,
   getOwnerBookings,
+  updateBooking,
   getOwnerPayouts,
   getCurrentUser,
   updateProfile,
@@ -73,6 +74,7 @@ export default function OwnerDashboard() {
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState("");
+  const [updatingBookingId, setUpdatingBookingId] = useState(null);
   const [bookingSearch, setBookingSearch] = useState("");
 
   const [payouts, setPayouts] = useState([]);
@@ -215,7 +217,7 @@ export default function OwnerDashboard() {
     });
   }, [bookings, bookingSearch]);
 
-  const isSeen = (item) => item?.status === "seen" || seenInquiryIds.includes(item?._id);
+  const isSeen = (item) => item?.status === "seen" || seenInquiryIds.includes(item?.id);
 
   const markInquirySeen = (id) => {
     if (!id) return;
@@ -227,12 +229,26 @@ export default function OwnerDashboard() {
       setUpdatingInquiryId(inquiryId);
       await updateInquiryStatus(inquiryId, newStatus);
       setInquiries((prev) =>
-        prev.map((item) => (item._id === inquiryId ? { ...item, status: newStatus } : item))
+        prev.map((item) => (item.id === inquiryId ? { ...item, status: newStatus } : item))
       );
     } catch (error) {
       alert(`Failed to update status: ${error?.message || "Unknown error"}`);
     } finally {
       setUpdatingInquiryId(null);
+    }
+  };
+
+  const handleUpdateBookingStatus = async (bookingId, newStatus) => {
+    try {
+      setUpdatingBookingId(bookingId);
+      await updateBooking(bookingId, { status: newStatus });
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: newStatus } : b))
+      );
+    } catch (error) {
+      alert(`Failed to update booking status: ${error?.message || "Unknown error"}`);
+    } finally {
+      setUpdatingBookingId(null);
     }
   };
 
@@ -601,19 +617,19 @@ export default function OwnerDashboard() {
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                           {filteredInquiries.map((item) => (
-                            <tr key={item._id} className={`hover:bg-[#EFF6FF]/70 transition-colors ${isSeen(item) ? "" : "bg-amber-50/30"}`}>
+                            <tr key={item.id} className={`hover:bg-[#EFF6FF]/70 transition-colors ${isSeen(item) ? "" : "bg-amber-50/30"}`}>
                               <td className="px-6 py-4 text-sm font-semibold text-[#1E3A5F]">{item?.name || "-"}</td>
-                              <td className="px-6 py-4 text-sm text-slate-700">{item?.property?.name || "-"}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700">{item?.properties?.name || "-"}</td>
                               <td className="px-6 py-4 text-sm text-slate-700">{item?.phone || "-"}</td>
-                              <td className="px-6 py-4 text-sm text-slate-700">{formatDate(item?.moveIn)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700">{formatDate(item?.move_in)}</td>
                               <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">{item?.message || "-"}</td>
                               <td className="px-6 py-4">
                                 <select
                                   value={item?.status || "new"}
-                                  disabled={updatingInquiryId === item._id}
+                                  disabled={updatingInquiryId === item.id}
                                   onChange={(e) => {
-                                    markInquirySeen(item._id);
-                                    handleUpdateInquiryStatus(item._id, e.target.value);
+                                    markInquirySeen(item.id);
+                                    handleUpdateInquiryStatus(item.id, e.target.value);
                                   }}
                                   className={`text-[11px] font-bold px-2.5 py-1 rounded-full border cursor-pointer outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 ${item?.status === "closed" ? "bg-[#EFF6FF] text-slate-600 border-slate-200 focus:ring-slate-100" : item?.status === "contacted" ? "bg-green-50 text-green-700 border-green-200 focus:ring-green-100" : item?.status === "seen" ? "bg-amber-50 text-amber-700 border-amber-200 focus:ring-amber-100" : "bg-[#dbeafe] text-blue-700 border-blue-200 focus:ring-blue-100"}`}>
                                   <option value="new">new</option>
@@ -621,7 +637,7 @@ export default function OwnerDashboard() {
                                   <option value="closed">closed</option>
                                 </select>
                               </td>
-                              <td className="px-6 py-4 text-sm text-slate-500">{formatDate(item?.createdAt)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500">{formatDate(item?.created_at)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -683,7 +699,17 @@ export default function OwnerDashboard() {
                             <td className="px-6 py-4 text-sm text-slate-700">{formatDate(b.move_in_date)}</td>
                             <td className="px-6 py-4 text-sm font-bold text-[#1E3A5F]">{formatCurrency(b.monthly_rent)}</td>
                             <td className="px-6 py-4">
-                              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${BOOKING_STATUS_STYLES[b.status] || "bg-slate-100 text-slate-600"}`}>{b.status}</span>
+                              <select
+                                value={b.status}
+                                disabled={updatingBookingId === b.id}
+                                onChange={(e) => handleUpdateBookingStatus(b.id, e.target.value)}
+                                className={`text-[11px] font-bold px-2.5 py-1 rounded-full cursor-pointer outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 ${BOOKING_STATUS_STYLES[b.status] || "bg-slate-100 text-slate-600 border border-slate-200"}`}>
+                                <option value="pending">pending</option>
+                                <option value="confirmed">confirmed</option>
+                                <option value="active">active</option>
+                                <option value="completed">completed</option>
+                                <option value="cancelled">cancelled</option>
+                              </select>
                             </td>
                             <td className="px-6 py-4">
                               <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${PAYMENT_STATUS_STYLES[b.payment_status] || "bg-slate-100 text-slate-600"}`}>{b.payment_status}</span>

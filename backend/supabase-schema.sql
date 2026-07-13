@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS properties (
   tagline TEXT,
   address TEXT NOT NULL,
   city TEXT NOT NULL,
+  state TEXT NOT NULL,
   landmark TEXT,
   lat NUMERIC,
   lng NUMERIC,
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS properties (
 );
 
 CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(city);
+CREATE INDEX IF NOT EXISTS idx_properties_state ON properties(state);
 CREATE INDEX IF NOT EXISTS idx_properties_status ON properties(status);
 CREATE INDEX IF NOT EXISTS idx_properties_owner ON properties(owner_id);
 CREATE INDEX IF NOT EXISTS idx_properties_referred_by ON properties(referred_by);

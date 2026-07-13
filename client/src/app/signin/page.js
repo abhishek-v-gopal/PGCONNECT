@@ -33,11 +33,13 @@ function SignInForm() {
     try {
       const response = await userLogin({ email, password });
       setLoading(false);
-      if (nextPath) { router.push(nextPath); return; }
       const role = response?.user?.role;
+      // Admins always land in the admin panel — `next` is only meant to return
+      // students/owners to the page they were trying to reach before signing in.
+      if (role === "admin") { router.push("/admin"); return; }
+      if (nextPath) { router.push(nextPath); return; }
       if (role === "student") { router.push("/referrerDashboard"); }
       else if (role === "owner") { router.push("/ownersDashboard"); }
-      else if (role === "admin") { router.push("/admin"); }
       else { router.push("/"); }
     } catch (err) {
       setLoading(false);

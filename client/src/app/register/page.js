@@ -2,7 +2,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { userRegister } from "../api";
 
 const STEPS = ["Account", "Personal", "Preferences"];
@@ -15,6 +15,14 @@ const universities = [
 ];
 
 export default function Register() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams?.get("next") || "";

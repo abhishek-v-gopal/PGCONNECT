@@ -2,7 +2,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createProperty, getCurrentUser } from "../api";
 import { supabase } from "../../lib/supabase";
@@ -12,6 +12,14 @@ const AMENITIES = ["Wi-Fi", "AC", "Laundry", "Kitchen", "Security", "Gym"];
 const ROOM_TYPES = ["Default", "Single", "Double", "Triple", "More than 3"];
 
 export default function ListProperty() {
+  return (
+    <Suspense fallback={null}>
+      <ListPropertyForm />
+    </Suspense>
+  );
+}
+
+function ListPropertyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
@@ -45,6 +53,7 @@ export default function ListProperty() {
     tagline: "",
     address: "",
     city: "",
+    state: "",
     landmark: "",
     amenities: [],
     gender: "Boys",
@@ -106,6 +115,7 @@ export default function ListProperty() {
     fd.append("tagline", form.tagline.trim());
     fd.append("address", form.address.trim());
     fd.append("city", form.city.trim());
+    fd.append("state", form.state.trim());
     fd.append("landmark", form.landmark.trim());
     fd.append("gender", form.gender);
     fd.append("manager_name", form.managerName.trim());
@@ -128,7 +138,7 @@ export default function ListProperty() {
 
     const hasInvalidRoom = rooms.some((room) => !room.price || !room.totalBeds);
 
-    if (!form.name || !form.address || !form.city || !form.managerName || rooms.length === 0 || hasInvalidRoom) {
+    if (!form.name || !form.address || !form.city || !form.state || !form.managerName || rooms.length === 0 || hasInvalidRoom) {
       setSubmitError("Please fill in the required fields.");
       return;
     }
@@ -142,7 +152,7 @@ export default function ListProperty() {
 
       const listing = {
         propertyName: form.name,
-        location: `${form.address}, ${form.city}${form.landmark ? ` (${form.landmark})` : ""}`,
+        location: `${form.address}, ${form.city}, ${form.state}${form.landmark ? ` (${form.landmark})` : ""}`,
         pricePerBed: form.roomPrice,
         totalBeds: rooms[0]?.totalBeds || "",
         amenities: form.amenities,
@@ -276,18 +286,19 @@ export default function ListProperty() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Address</label>
+                  <input
+                    type="text"
+                    placeholder="5th Block"
+                    value={form.address}
+                    onChange={(e) => updateField("address", e.target.value)}
+                    required
+                    className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">Address</label>
-                    <input
-                      type="text"
-                      placeholder="5th Block"
-                      value={form.address}
-                      onChange={(e) => updateField("address", e.target.value)}
-                      required
-                      className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
-                    />
-                  </div>
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">City</label>
                     <input
@@ -295,6 +306,17 @@ export default function ListProperty() {
                       placeholder="Chanaganassery"
                       value={form.city}
                       onChange={(e) => updateField("city", e.target.value)}
+                      required
+                      className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#1E3A5F60] mb-2">State</label>
+                    <input
+                      type="text"
+                      placeholder="Kerala"
+                      value={form.state}
+                      onChange={(e) => updateField("state", e.target.value)}
                       required
                       className="w-full bg-[#EFF6FF] border border-transparent focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 rounded-xl px-4 py-3 text-sm text-[#1E3A5F] placeholder-slate-400 outline-none transition-all"
                     />

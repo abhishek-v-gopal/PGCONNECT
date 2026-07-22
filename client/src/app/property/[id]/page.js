@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cache } from "react";
 import InquiryForm from "./InquiryForm";
+import BookingForm from "./BookingForm";
 import ReviewForm from "./ReviewForm";
 import Gallery from "./Gallery";
 import Navbar from "../../components/Navbar";
@@ -315,6 +316,7 @@ export default async function PropertyDetailPage({ params }) {
             </Reveal>
 
             <Reveal direction="left" delay={0.1} as="aside" className="space-y-6">
+              <BookingForm propertyId={id} rooms={rooms} />
               <InquiryForm propertyId={id} />
 
               <div className="rounded-3xl border border-[#bfdbfe] bg-white p-6 shadow-sm">

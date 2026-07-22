@@ -211,10 +211,10 @@ export const getAdminProperties = async (sort = 'views', page = 1) => {
   return authFetch(`/api/admin/properties?sort=${sort}&page=${page}`)
 }
 
-export const verifyProperty = async (propertyId, action, rejection_reason) => {
+export const verifyProperty = async (propertyId, action) => {
   return authFetch(`/api/admin/properties/${propertyId}/verify`, {
     method: 'PATCH',
-    body: JSON.stringify({ action, rejection_reason }),
+    body: JSON.stringify({ action }),
   })
 }
 

@@ -15,12 +15,12 @@ const publicCache = cache({ cacheName: 'pgconnect-properties', cacheControl: 'pu
 // GET /api/properties — public, with filters
 propertiesRouter.get('/', publicCache, async (c) => {
   const supabase = getSupabase(c.env)
-  const { city, minPrice, maxPrice, gender, roomType, search, sort, page = '1', limit = '12' } = c.req.query()
+  const { city, state, minPrice, maxPrice, gender, roomType, search, sort, page = '1', limit = '12' } = c.req.query()
 
   let query = supabase
     .from('properties')
     .select(`
-      id, name, address, city, landmark,
+      id, name, address, city, state, landmark,
       amenities, gender, starting_price, rating, total_ratings,
       status, is_verified, available_beds,
       property_images(image_url, position),
@@ -29,6 +29,7 @@ propertiesRouter.get('/', publicCache, async (c) => {
     .eq('status', 'verified')
 
   if (city) query = query.ilike('city', `%${city}%`)
+  if (state) query = query.ilike('state', `%${state}%`)
   if (gender) query = query.eq('gender', gender)
   if (minPrice) query = query.gte('starting_price', Number(minPrice))
   if (maxPrice) query = query.lte('starting_price', Number(maxPrice))
@@ -41,7 +42,7 @@ propertiesRouter.get('/', publicCache, async (c) => {
     if (ids.length) query = query.in('id', ids)
     else return c.json({ success: true, total: 0, page: 1, pages: 0, properties: [] })
   }
-  if (search) query = query.or(`name.ilike.%${search}%,city.ilike.%${search}%,address.ilike.%${search}%`)
+  if (search) query = query.or(`name.ilike.%${search}%,city.ilike.%${search}%,state.ilike.%${search}%,address.ilike.%${search}%`)
 
   const sortMap: Record<string, { column: string; ascending: boolean }> = {
     price_asc: { column: 'starting_price', ascending: true },
@@ -127,6 +128,7 @@ propertiesRouter.post('/', authMiddleware, requireRole('owner', 'admin'), async 
       tagline: formData.get('tagline'),
       address: formData.get('address'),
       city: formData.get('city'),
+      state: formData.get('state'),
       landmark: formData.get('landmark'),
       lat: formData.get('lat') ? Number(formData.get('lat')) : undefined,
       lng: formData.get('lng') ? Number(formData.get('lng')) : undefined,
@@ -143,8 +145,8 @@ propertiesRouter.post('/', authMiddleware, requireRole('owner', 'admin'), async 
     body = await c.req.json()
   }
 
-  if (!body.name || !body.address || !body.city) {
-    return c.json({ success: false, message: 'name, address, and city are required' }, 400)
+  if (!body.name || !body.address || !body.city || !body.state) {
+    return c.json({ success: false, message: 'name, address, city, and state are required' }, 400)
   }
 
   // Resolve referral code to referrer UUID
@@ -179,6 +181,7 @@ propertiesRouter.post('/', authMiddleware, requireRole('owner', 'admin'), async 
       tagline: body.tagline,
       address: body.address,
       city: body.city,
+      state: body.state,
       landmark: body.landmark,
       lat: body.lat,
       lng: body.lng,
@@ -234,7 +237,7 @@ propertiesRouter.patch('/:id', authMiddleware, async (c) => {
   }
 
   const body = await c.req.json()
-  const allowed = ['name', 'tagline', 'address', 'city', 'landmark', 'lat', 'lng', 'gender', 'amenities', 'manager_name', 'manager_phone']
+  const allowed = ['name', 'tagline', 'address', 'city', 'state', 'landmark', 'lat', 'lng', 'gender', 'amenities', 'manager_name', 'manager_phone']
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
   for (const key of allowed) {
     if (body[key] !== undefined) updates[key] = body[key]

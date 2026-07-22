@@ -2,12 +2,20 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { userLogin } from "../api";
 import Navbar from "../components/Navbar";
 
 export default function SignIn() {
+  return (
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams?.get("next") || "";
@@ -25,11 +33,13 @@ export default function SignIn() {
     try {
       const response = await userLogin({ email, password });
       setLoading(false);
-      if (nextPath) { router.push(nextPath); return; }
       const role = response?.user?.role;
+      // Admins always land in the admin panel — `next` is only meant to return
+      // students/owners to the page they were trying to reach before signing in.
+      if (role === "admin") { router.push("/admin"); return; }
+      if (nextPath) { router.push(nextPath); return; }
       if (role === "student") { router.push("/referrerDashboard"); }
       else if (role === "owner") { router.push("/ownersDashboard"); }
-      else if (role === "admin") { router.push("/admin"); }
       else { router.push("/"); }
     } catch (err) {
       setLoading(false);

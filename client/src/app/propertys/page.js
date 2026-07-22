@@ -1,7 +1,7 @@
 "use client";
 import Head from "next/head";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAllProperties } from "../api";
 import Navbar from "../components/Navbar";
@@ -63,6 +63,8 @@ const mapProperty = (property) => {
     id: property?.id,
     name: property?.name || "Untitled Property",
     location: property?.address || property?.city || "Unknown location",
+    city: property?.city || "",
+    state: property?.state || "",
     distance: property?.city && property?.landmark
       ? `${property.city} • ${property.landmark}`
       : property?.city || property?.landmark || "",
@@ -86,6 +88,14 @@ const mapProperty = (property) => {
 
 // ── COMPONENT ────────────────────────────────────────────────────────────────
 export default function SearchResults() {
+  return (
+    <Suspense fallback={null}>
+      <SearchResultsContent />
+    </Suspense>
+  );
+}
+
+function SearchResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -165,7 +175,12 @@ export default function SearchResults() {
       if (amenities.length > 0 && !amenities.every((a) => p.amenities.includes(a))) return false;
       if (moveIn && p.availableBeds <= 0) return false;
       const searchValue = search.toLowerCase();
-      if (searchValue && !p.name.toLowerCase().includes(searchValue) && !p.location.toLowerCase().includes(searchValue)) return false;
+      if (searchValue
+        && !p.name.toLowerCase().includes(searchValue)
+        && !p.location.toLowerCase().includes(searchValue)
+        && !p.city.toLowerCase().includes(searchValue)
+        && !p.state.toLowerCase().includes(searchValue)
+      ) return false;
       return true;
     })
     .sort((a, b) => {

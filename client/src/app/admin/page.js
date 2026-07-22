@@ -19,9 +19,8 @@ import {
 
 const VERIFICATION_STATUSES = [
   { value: "pending", label: "Pending" },
-  { value: "in_review", label: "In Review" },
-  { value: "verified", label: "Verified" },
-  { value: "rejected", label: "Rejected" },
+  { value: "verified", label: "Enabled" },
+  { value: "unlisted", label: "Disabled" },
 ];
 
 const NAV_ITEMS = [
@@ -36,11 +35,10 @@ const NAV_ITEMS = [
 function StatusBadge({ status }) {
   const styles = {
     pending: { background: "#fff7ed", color: "#F97316", border: "1px solid #fed7aa" },
-    in_review: { background: "#dbeafe", color: "#1D4ED8", border: "1px solid #bfdbfe" },
-    verified: { background: "#cffafe", color: "#0e7490", border: "1px solid #a5f3fc" },
-    rejected: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+    verified: { background: "#dcfce7", color: "#15803d", border: "1px solid #bbf7d0" },
+    unlisted: { background: "#f1f5f9", color: "#64748b", border: "1px solid #e2e8f0" },
   };
-  const labels = { pending: "NEW", in_review: "IN REVIEW", verified: "APPROVED", rejected: "REJECTED" };
+  const labels = { pending: "NEW", verified: "ENABLED", unlisted: "DISABLED" };
   return (
     <span className="text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
       style={styles[status] || styles.pending}>
@@ -109,6 +107,11 @@ export default function AdminPanel() {
       if (q.success) { setQueue(q.properties); setQueueTotal(q.total); }
     } catch (e) { console.error("Queue error:", e); }
     finally { setQueueLoading(false); }
+
+    try {
+      const r = await getAdminReviews("pending");
+      if (r.success) setReviewsTotal(r.total);
+    } catch (e) { console.error("Reviews count error:", e); }
   };
 
   const loadUsers = async () => {
@@ -323,7 +326,7 @@ export default function AdminPanel() {
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
-              {queueTotal > 0 && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"/>}
+              {(queueTotal > 0 || reviewsTotal > 0) && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"/>}
             </button>
             <div className="hidden sm:block text-right">
               <p className="text-sm font-bold leading-tight" style={{ color: "#1D4ED8" }}>
@@ -364,7 +367,7 @@ export default function AdminPanel() {
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1">
           {sidebarOpen && <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setSidebarOpen(false)} />}
 
           {/* SIDEBAR */}
@@ -398,6 +401,9 @@ export default function AdminPanel() {
                   {item.label}
                   {item.label === "Verification" && queueTotal > 0 && (
                     <span className="ml-auto text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full">{queueTotal}</span>
+                  )}
+                  {item.label === "Reviews" && reviewsTotal > 0 && (
+                    <span className="ml-auto text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full">{reviewsTotal}</span>
                   )}
                 </button>
               ))}
@@ -494,24 +500,17 @@ export default function AdminPanel() {
                                 <td className="px-5 py-3.5">
                                   <div className="flex items-center gap-2">
                                     <button
-                                      onClick={() => handleVerify(p.id, "approve")}
+                                      onClick={() => handleVerify(p.id, "enable")}
                                       disabled={actioningId === p.id}
                                       className="text-xs font-bold cursor-pointer disabled:opacity-50" style={{ color: "#1D4ED8" }}>
-                                      Approve
+                                      Enable
                                     </button>
                                     <span className="text-slate-200">|</span>
                                     <button
-                                      onClick={() => handleVerify(p.id, "review")}
-                                      disabled={actioningId === p.id}
-                                      className="text-xs font-medium cursor-pointer disabled:opacity-50" style={{ color: "#F97316" }}>
-                                      Review
-                                    </button>
-                                    <span className="text-slate-200">|</span>
-                                    <button
-                                      onClick={() => handleVerify(p.id, "reject")}
+                                      onClick={() => handleVerify(p.id, "disable")}
                                       disabled={actioningId === p.id}
                                       className="text-xs font-medium text-slate-400 hover:text-red-500 cursor-pointer disabled:opacity-50">
-                                      Reject
+                                      Disable
                                     </button>
                                   </div>
                                 </td>
@@ -764,24 +763,17 @@ export default function AdminPanel() {
                               <td className="px-5 py-3.5">
                                 <div className="flex items-center gap-2">
                                   <button
-                                    onClick={() => handleVerificationAction(p.id, "approve")}
+                                    onClick={() => handleVerificationAction(p.id, "enable")}
                                     disabled={verificationActioningId === p.id}
                                     className="text-xs font-bold cursor-pointer disabled:opacity-50" style={{ color: "#1D4ED8" }}>
-                                    Approve
+                                    Enable
                                   </button>
                                   <span className="text-slate-200">|</span>
                                   <button
-                                    onClick={() => handleVerificationAction(p.id, "review")}
-                                    disabled={verificationActioningId === p.id}
-                                    className="text-xs font-medium cursor-pointer disabled:opacity-50" style={{ color: "#F97316" }}>
-                                    Review
-                                  </button>
-                                  <span className="text-slate-200">|</span>
-                                  <button
-                                    onClick={() => handleVerificationAction(p.id, "reject")}
+                                    onClick={() => handleVerificationAction(p.id, "disable")}
                                     disabled={verificationActioningId === p.id}
                                     className="text-xs font-medium text-slate-400 hover:text-red-500 cursor-pointer disabled:opacity-50">
-                                    Reject
+                                    Disable
                                   </button>
                                 </div>
                               </td>

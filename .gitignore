@@ -7,3 +7,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# Cloudflare Workers local dev state
+.wrangler

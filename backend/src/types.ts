@@ -16,15 +16,17 @@ export type Env = {
 export type UserProfile = {
   id: string
   email: string
-  role: 'student' | 'owner' | 'admin'
+  role: 'student' | 'owner' | 'agent' | 'admin'
   first_name: string
   last_name: string
   phone?: string
   avatar?: string
   university?: string
   is_verified_owner: boolean
+  is_verified_agent: boolean
   is_active: boolean
   referral_code?: string
+  agent_code?: string
   commission_type: 'recurring' | 'one-time'
   total_commission_earned: number
   commission_balance: number

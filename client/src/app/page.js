@@ -17,7 +17,7 @@ const COLLECTIONS = [
 ];
 
 const TESTIMONIALS = [
-  { quote: "Found my perfect room in less than 24 hours. The verification process gave me peace of mind before I even arrived in the city.", name: "Jordan Davies", role: "Computer Science, Stanford", initials: "JD", color: "bg-[#1D4ED8]" },
+  { quote: "Found my perfect room in less than 24 hours. The verification process gave me peace of mind before I even arrived in the city.", name: "Jordan Davies", role: "Computer Science, Stanford", initials: "JD", color: "bg-[var(--pg-primary)]" },
   { quote: "The 'Walk-to-Campus' filter was a lifesaver. PG Connect actually visits these places, which is clear from the quality of photos.", name: "Sarah Lin", role: "Architecture, MIT", initials: "SL", color: "bg-slate-500" },
   { quote: "I love the social hub listings. I moved into a community of like-minded students and felt at home from day one.", name: "Marcus King", role: "Economics, Oxford", initials: "MK", color: "bg-slate-700" },
 ];
@@ -120,7 +120,7 @@ export default function Home() {
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           html { scroll-behavior: smooth; }
-          body { font-family: 'Plus Jakarta Sans', sans-serif; background: #EFF6FF; color: #1E3A5F; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+          body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--pg-bg); color: var(--pg-text); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
           .font-display { font-family: 'Fraunces', serif; }
           select { appearance: none; background: transparent; cursor: pointer; }
           .no-scroll::-webkit-scrollbar { display: none; }
@@ -131,17 +131,17 @@ export default function Home() {
           .pg-card-hover:hover .card-img { transform: scale(1.08); }
           .search-field { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
           .search-field label { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #94a3b8; }
-          .search-field input, .search-field select { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1E3A5F; border: none; outline: none; background: transparent; width: 100%; }
+          .search-field input, .search-field select { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; color: var(--pg-text); border: none; outline: none; background: transparent; width: 100%; }
           .search-field input::placeholder { color: #94a3b8; font-weight: 500; }
         `}</style>
       </Head>
 
-      <div className="min-h-screen" style={{ background: "#EFF6FF", color: "#1E3A5F" }}>
+      <div className="min-h-screen" style={{ background: "var(--pg-bg)", color: "var(--pg-text)" }}>
 
         <Navbar />
 
         {/* ── HERO ── */}
-        <section className="relative min-h-[88vh] flex items-center overflow-hidden" style={{ background: "#EFF6FF" }}>
+        <section id="main-content" className="relative min-h-[88vh] flex items-center overflow-hidden" style={{ background: "var(--pg-bg)" }}>
           {/* Right side image */}
           <div className="absolute inset-0 flex">
             <div className="w-full md:w-1/2" />
@@ -151,22 +151,22 @@ export default function Home() {
                 alt="Modern student room"
                 className="absolute inset-0 w-full h-full object-cover"
               />
-              <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #EFF6FF, #EFF6FF40, transparent)" }} />
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to right, var(--pg-bg), var(--pg-bg) 40%, transparent)" }} />
             </div>
           </div>
           {/* Animated decorative blobs */}
-          <div className="pg-blob absolute top-20 right-[48%] w-64 h-64 rounded-full opacity-20 blur-2xl pointer-events-none" style={{ background: "#1D4ED8" }} />
-          <div className="pg-blob-alt absolute bottom-0 left-[8%] w-52 h-52 rounded-full opacity-10 blur-2xl pointer-events-none" style={{ background: "#F97316" }} />
+          <div className="pg-blob absolute top-20 right-[48%] w-64 h-64 rounded-full opacity-20 blur-2xl pointer-events-none" style={{ background: "var(--pg-primary)" }} />
+          <div className="pg-blob-alt absolute bottom-0 left-[8%] w-52 h-52 rounded-full opacity-10 blur-2xl pointer-events-none" style={{ background: "var(--pg-accent)" }} />
 
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24 w-full" style={{ color: "#1E3A5F" }}>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24 w-full" style={{ color: "var(--pg-text)" }}>
             <div className="max-w-xl">
               <motion.span
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="inline-flex items-center gap-2 border text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-6"
-                style={{ background: "#dbeafe", borderColor: "#bfdbfe", color: "#1D4ED8" }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#1D4ED8" }} />
+                style={{ background: "var(--pg-chip-bg)", borderColor: "var(--pg-border)", color: "var(--pg-primary)" }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--pg-primary)" }} />
                 2,400+ Verified Listings in Kerala
               </motion.span>
 
@@ -175,19 +175,19 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                 className="font-display text-[3.2rem] sm:text-[4rem] lg:text-[4.8rem] leading-[1.05] font-bold tracking-tight mb-6"
-                style={{ color: "#1E3A5F" }}>
+                style={{ color: "var(--pg-text)" }}>
                 Find your{" "}
-                <span style={{ color: "#1D4ED8" }} className="italic">perfect PG</span>
+                <span style={{ color: "var(--pg-primary)" }} className="italic">perfect PG</span>
                 <br />
                 near your{" "}
-                <span style={{ color: "#F97316" }} className="italic">campus.</span>
+                <span style={{ color: "var(--pg-accent)" }} className="italic">campus.</span>
               </motion.h1>
 
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                className="text-base sm:text-lg leading-relaxed max-w-md mb-10" style={{ color: "#1E3A5F99" }}>
+                className="text-base sm:text-lg leading-relaxed max-w-md mb-10" style={{ color: "var(--pg-text-secondary)" }}>
                 Kerala's trusted PG marketplace for students. Verified listings, transparent pricing, and a referral program that rewards your network.
               </motion.p>
 
@@ -197,7 +197,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.34, ease: [0.22, 1, 0.36, 1] }}
                 className="w-full">
-                <div className="hidden md:flex bg-white rounded-2xl shadow-xl border border-blue-100 overflow-hidden p-1 items-center gap-0.5 w-full lg:max-w-2xl">
+                <div className="hidden md:flex bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-blue-100 overflow-hidden p-1 items-center gap-0.5 w-full lg:max-w-2xl">
                   <div className="search-field flex-1 px-3 sm:px-4 py-2.5 border-r border-blue-50 min-w-0">
                     <input type="text" placeholder="Near University..." value={location} onChange={e => setLocation(e.target.value)} onKeyDown={e => e.key === "Enter" && goSearch()} />
                   </div>
@@ -222,9 +222,9 @@ export default function Home() {
                     whileTap={{ scale: 0.96 }}
                     onClick={goSearch}
                     className="text-white text-xs sm:text-sm font-bold px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 m-0.5"
-                    style={{ background: "#1D4ED8" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#1e40af"}
-                    onMouseLeave={e => e.currentTarget.style.background = "#1D4ED8"}>
+                    style={{ background: "var(--pg-primary)" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "var(--pg-primary-dark)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "var(--pg-primary)"}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
@@ -234,26 +234,26 @@ export default function Home() {
 
                 {/* Mobile search */}
                 <div className="md:hidden flex flex-col gap-2">
-                  <div className="bg-white rounded-2xl shadow-xl border border-blue-100 overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-blue-100 overflow-hidden">
                     <div className="px-4 py-3 border-b border-blue-50">
                       <input type="text" placeholder="Search by city or university..." value={location} onChange={e => setLocation(e.target.value)}
-                        className="w-full text-sm font-semibold outline-none bg-transparent placeholder-slate-400" style={{ color: "#1E3A5F" }} />
+                        className="w-full text-sm font-semibold outline-none bg-transparent placeholder-slate-400" style={{ color: "var(--pg-text)" }} />
                     </div>
                     <div className="flex">
                       <div className="flex-1 px-4 py-3 border-r border-blue-50">
-                        <select value={price} onChange={e => setPrice(e.target.value)} className="w-full text-sm font-semibold outline-none bg-transparent" style={{ color: "#1E3A5F" }}>
+                        <select value={price} onChange={e => setPrice(e.target.value)} className="w-full text-sm font-semibold outline-none bg-transparent" style={{ color: "var(--pg-text)" }}>
                           <option>Price Range</option><option>Under ₹10k</option><option>₹10k–₹20k</option><option>Above ₹20k</option>
                         </select>
                       </div>
                       <div className="flex-1 px-4 py-3">
-                        <select value={gender} onChange={e => setGender(e.target.value)} className="w-full text-sm font-semibold outline-none bg-transparent" style={{ color: "#1E3A5F" }}>
+                        <select value={gender} onChange={e => setGender(e.target.value)} className="w-full text-sm font-semibold outline-none bg-transparent" style={{ color: "var(--pg-text)" }}>
                           <option>Gender</option><option>Boys</option><option>Girls</option><option>Co-ed</option>
                         </select>
                       </div>
                     </div>
                   </div>
                   <motion.button whileTap={{ scale: 0.97 }} onClick={goSearch} className="w-full text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 cursor-pointer"
-                    style={{ background: "#1D4ED8" }}>
+                    style={{ background: "var(--pg-primary)" }}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
@@ -268,11 +268,11 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.46 }}
                 className="mt-5 flex flex-wrap gap-2">
-                <span className="text-xs font-semibold" style={{ color: "#1E3A5F80" }}>Popular:</span>
+                <span className="text-xs font-semibold" style={{ color: "var(--pg-text-secondary)" }}>Popular:</span>
                 {["Thrissur", "Kozhikode", "Kochi", "Trivandrum"].map(city => (
                   <motion.button key={city} whileHover={{ scale: 1.06, y: -1 }} whileTap={{ scale: 0.96 }} onClick={() => { setLocation(city); goSearch(); }}
-                    className="text-xs font-semibold px-3 py-1 rounded-full border border-blue-200 hover:border-[#1D4ED8] hover:text-[#1D4ED8] transition-colors cursor-pointer"
-                    style={{ background: "white", color: "#1E3A5F" }}>
+                    className="text-xs font-semibold px-3 py-1 rounded-full border border-blue-200 hover:border-[var(--pg-primary)] hover:text-[var(--pg-primary)] transition-colors cursor-pointer"
+                    style={{ background: "var(--pg-surface)", color: "var(--pg-text)" }}>
                     {city}
                   </motion.button>
                 ))}
@@ -282,7 +282,7 @@ export default function Home() {
         </section>
 
         {/* ── STATS BAR ── */}
-        <section className="pg-gradient-animated py-8" style={{ background: "linear-gradient(120deg, #1D4ED8, #1e40af, #1D4ED8)" }}>
+        <section className="pg-gradient-animated py-8" style={{ background: "linear-gradient(120deg, var(--pg-primary), var(--pg-primary-dark), var(--pg-primary))" }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center text-white" staggerChildren={0.1}>
               {STATS.map(s => (
@@ -301,10 +301,10 @@ export default function Home() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <Reveal className="flex items-end justify-between mb-8">
             <div>
-              <h2 className="font-display text-2xl sm:text-3xl font-bold" style={{ color: "#1E3A5F" }}>Curated Collections</h2>
-              <p className="text-sm mt-1" style={{ color: "#1E3A5F80" }}>Tailored living spaces for every student need.</p>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold" style={{ color: "var(--pg-text)" }}>Curated Collections</h2>
+              <p className="text-sm mt-1" style={{ color: "var(--pg-text-secondary)" }}>Tailored living spaces for every student need.</p>
             </div>
-            <button onClick={goSearch} className="text-sm font-semibold hover:opacity-80 transition-opacity cursor-pointer whitespace-nowrap flex items-center gap-1" style={{ color: "#1D4ED8" }}>
+            <button onClick={goSearch} className="text-sm font-semibold hover:opacity-80 transition-opacity cursor-pointer whitespace-nowrap flex items-center gap-1" style={{ color: "var(--pg-primary)" }}>
               View All
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -333,15 +333,15 @@ export default function Home() {
         </section>
 
         {/* ── TOP RATED PROPERTIES ── */}
-        <section className="py-14 sm:py-20" style={{ background: "white" }}>
+        <section className="py-14 sm:py-20" style={{ background: "var(--pg-surface)" }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <Reveal className="text-center mb-10">
               <span className="inline-flex items-center gap-1.5 border text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-4"
-                style={{ background: "#dbeafe", borderColor: "#bfdbfe", color: "#1D4ED8" }}>
+                style={{ background: "var(--pg-chip-bg)", borderColor: "var(--pg-border)", color: "var(--pg-primary)" }}>
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 Top Rated Properties
               </span>
-              <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold" style={{ color: "#1E3A5F" }}>
+              <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold" style={{ color: "var(--pg-text)" }}>
                 Discover the Best PGs in Kerala
               </h2>
             </Reveal>
@@ -356,8 +356,8 @@ export default function Home() {
               <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5" staggerChildren={0.08}>
                 {featuredToShow.map(p => (
                   <StaggerItem key={p.id}>
-                    <div className="pg-card-hover bg-white rounded-2xl overflow-hidden border cursor-pointer h-full"
-                      style={{ borderColor: "#e0f2fe" }}
+                    <div className="pg-card-hover bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border cursor-pointer h-full"
+                      style={{ borderColor: "var(--pg-border-soft)" }}
                       onClick={() => router.push(`/property/${p.id}`)}>
                       <div className="relative overflow-hidden aspect-[4/3]">
                         <img src={p.img} alt={p.name} loading="lazy" className="card-img w-full h-full object-cover" />
@@ -370,7 +370,7 @@ export default function Home() {
                             {p.badge}
                           </span>
                         )}
-                        <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} onClick={e => toggleWishlist(e, p.id)} className="absolute top-3 right-3 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md cursor-pointer">
+                        <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} onClick={e => toggleWishlist(e, p.id)} className="absolute top-3 right-3 w-7 h-7 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-md cursor-pointer">
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24"
                             fill={wishlist.includes(p.id) ? "#ef4444" : "none"}
                             stroke={wishlist.includes(p.id) ? "#ef4444" : "#94a3b8"}
@@ -381,25 +381,25 @@ export default function Home() {
                       </div>
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-1 mb-1">
-                          <p className="font-bold text-sm leading-snug" style={{ color: "#1E3A5F" }}>{p.name}</p>
-                          <span className="flex items-center gap-0.5 text-xs font-bold shrink-0" style={{ color: "#1E3A5F" }}>
-                            <span style={{ color: "#F97316" }}>★</span>{p.rating}
+                          <p className="font-bold text-sm leading-snug" style={{ color: "var(--pg-text)" }}>{p.name}</p>
+                          <span className="flex items-center gap-0.5 text-xs font-bold shrink-0" style={{ color: "var(--pg-text)" }}>
+                            <span style={{ color: "var(--pg-accent)" }}>★</span>{p.rating}
                           </span>
                         </div>
-                        <p className="text-xs mb-3 flex items-center gap-1" style={{ color: "#1E3A5F80" }}>
+                        <p className="text-xs mb-3 flex items-center gap-1" style={{ color: "var(--pg-text-secondary)" }}>
                           <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                           {p.dist}
                         </p>
                         <div className="flex items-center justify-between gap-2">
                           <div>
-                            <span className="text-lg font-bold" style={{ color: "#1E3A5F" }}>₹{p.price.toLocaleString('en-IN')}</span>
-                            <span className="text-xs" style={{ color: "#1E3A5F80" }}> /month</span>
+                            <span className="text-lg font-bold" style={{ color: "var(--pg-text)" }}>₹{p.price.toLocaleString('en-IN')}</span>
+                            <span className="text-xs" style={{ color: "var(--pg-text-secondary)" }}> /month</span>
                           </div>
                           <button onClick={e => { e.stopPropagation(); router.push(`/property/${p.id}`); }}
                             className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer border"
-                            style={{ borderColor: "#bfdbfe", color: "#1D4ED8" }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = "#1D4ED8"; e.currentTarget.style.background = "#dbeafe"; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = "#bfdbfe"; e.currentTarget.style.background = "transparent"; }}>
+                            style={{ borderColor: "var(--pg-border)", color: "var(--pg-primary)" }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--pg-primary)"; e.currentTarget.style.background = "var(--pg-chip-bg)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--pg-border)"; e.currentTarget.style.background = "transparent"; }}>
                             Details
                           </button>
                         </div>
@@ -412,9 +412,9 @@ export default function Home() {
 
             <Reveal className="text-center mt-10" delay={0.1}>
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} onClick={goSearch} className="text-white font-bold px-8 py-3.5 rounded-2xl cursor-pointer shadow-md hover:shadow-lg"
-                style={{ background: "#1D4ED8" }}
-                onMouseEnter={e => e.currentTarget.style.background = "#1e40af"}
-                onMouseLeave={e => e.currentTarget.style.background = "#1D4ED8"}>
+                style={{ background: "var(--pg-primary)" }}
+                onMouseEnter={e => e.currentTarget.style.background = "var(--pg-primary-dark)"}
+                onMouseLeave={e => e.currentTarget.style.background = "var(--pg-primary)"}>
                 View All Properties
               </motion.button>
             </Reveal>
@@ -422,13 +422,13 @@ export default function Home() {
         </section>
 
         {/* ── TRUST SECTION ── */}
-        <section className="py-14 sm:py-20 bg-slate-50">
+        <section className="py-14 sm:py-20 bg-slate-50 dark:bg-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <Reveal className="text-center mb-12">
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-6" style={{ color: "#1E3A5F60" }}>Trusted by students from</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-6" style={{ color: "var(--pg-text-tertiary)" }}>Trusted by students from</p>
               <div className="flex items-center justify-center gap-8 sm:gap-12 flex-wrap">
                 {["Calicut University", "CUSAT", "Kerala University", "NIT Calicut"].map(u => (
-                  <div key={u} className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#1E3A5F80" }}>
+                  <div key={u} className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--pg-text-secondary)" }}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     </svg>
@@ -442,16 +442,16 @@ export default function Home() {
             <Stagger className="grid grid-cols-1 sm:grid-cols-3 gap-5" staggerChildren={0.1}>
               {TESTIMONIALS.map((t, i) => (
                 <StaggerItem key={i}>
-                  <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.25 }} className="bg-white rounded-2xl p-6 border h-full shadow-sm hover:shadow-lg" style={{ borderColor: "#e0f2fe" }}>
+                  <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.25 }} className="bg-white dark:bg-slate-800 rounded-2xl p-6 border h-full shadow-sm hover:shadow-lg" style={{ borderColor: "var(--pg-border-soft)" }}>
                     <div className="flex gap-1 mb-4">
-                      {[1,2,3,4,5].map(s => <span key={s} style={{ color: "#F97316" }}>★</span>)}
+                      {[1,2,3,4,5].map(s => <span key={s} style={{ color: "var(--pg-accent)" }}>★</span>)}
                     </div>
-                    <p className="text-sm leading-relaxed mb-5" style={{ color: "#1E3A5F" }}>"{t.quote}"</p>
+                    <p className="text-sm leading-relaxed mb-5" style={{ color: "var(--pg-text)" }}>"{t.quote}"</p>
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-full ${t.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>{t.initials}</div>
                       <div>
-                        <p className="text-xs font-bold" style={{ color: "#1E3A5F" }}>{t.name}</p>
-                        <p className="text-[11px]" style={{ color: "#1E3A5F80" }}>{t.role}</p>
+                        <p className="text-xs font-bold" style={{ color: "var(--pg-text)" }}>{t.name}</p>
+                        <p className="text-[11px]" style={{ color: "var(--pg-text-secondary)" }}>{t.role}</p>
                       </div>
                     </div>
                   </motion.div>
@@ -462,11 +462,11 @@ export default function Home() {
         </section>
 
         {/* ── THREE STEPS ── */}
-        <section className="py-14 sm:py-20 overflow-hidden" style={{ background: "white" }}>
+        <section className="py-14 sm:py-20 overflow-hidden" style={{ background: "var(--pg-surface)" }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
               <Reveal direction="right" className="flex-1 w-full">
-                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-10" style={{ color: "#1E3A5F" }}>
+                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-10" style={{ color: "var(--pg-text)" }}>
                   Three steps to your new university life.
                 </h2>
                 <Stagger className="space-y-7" staggerChildren={0.12}>
@@ -474,12 +474,12 @@ export default function Home() {
                     <StaggerItem key={s.n}>
                       <div className="flex items-start gap-4">
                         <motion.div whileHover={{ scale: 1.1, rotate: 6 }} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 mt-0.5"
-                          style={{ background: "#1D4ED8" }}>
+                          style={{ background: "var(--pg-primary)" }}>
                           {s.n}
                         </motion.div>
                         <div>
-                          <p className="font-bold text-base mb-1" style={{ color: "#1E3A5F" }}>{s.title}</p>
-                          <p className="text-sm leading-relaxed" style={{ color: "#1E3A5F80" }}>{s.desc}</p>
+                          <p className="font-bold text-base mb-1" style={{ color: "var(--pg-text)" }}>{s.title}</p>
+                          <p className="text-sm leading-relaxed" style={{ color: "var(--pg-text-secondary)" }}>{s.desc}</p>
                         </div>
                       </div>
                     </StaggerItem>
@@ -496,15 +496,15 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.4, duration: 0.5 }}
-                  className="absolute bottom-6 left-6 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 border border-blue-100">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "#1D4ED8" }}>
+                  className="absolute bottom-6 left-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 border border-blue-100">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--pg-primary)" }}>
                     <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
                   </div>
                   <div>
-                    <p className="text-xs font-bold" style={{ color: "#1E3A5F" }}>Verified Status</p>
-                    <p className="text-[10px]" style={{ color: "#1E3A5F80" }}>Background check complete</p>
+                    <p className="text-xs font-bold" style={{ color: "var(--pg-text)" }}>Verified Status</p>
+                    <p className="text-[10px]" style={{ color: "var(--pg-text-secondary)" }}>Background check complete</p>
                   </div>
                 </motion.div>
               </Reveal>
@@ -515,7 +515,7 @@ export default function Home() {
         {/* ── REFERRAL BANNER ── */}
         <Reveal as="section" className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <div className="rounded-3xl overflow-hidden relative p-8 sm:p-12 text-white"
-            style={{ background: "#1D4ED8" }}>
+            style={{ background: "var(--pg-primary)" }}>
             <div className="pg-blob absolute -top-12 -right-12 w-48 h-48 rounded-full opacity-20 pointer-events-none" style={{ background: "#ffffff" }} />
             <div className="pg-blob-alt absolute -bottom-8 -left-8 w-36 h-36 rounded-full opacity-10 pointer-events-none" style={{ background: "#ffffff" }} />
             <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
@@ -530,9 +530,9 @@ export default function Home() {
               </div>
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }} onClick={() => router.push("/register")}
                 className="shrink-0 font-bold text-sm px-7 py-3.5 rounded-2xl cursor-pointer whitespace-nowrap shadow-lg"
-                style={{ background: "#F97316", color: "white" }}
-                onMouseEnter={e => e.currentTarget.style.background = "#ea6c0a"}
-                onMouseLeave={e => e.currentTarget.style.background = "#F97316"}>
+                style={{ background: "var(--pg-accent)", color: "white" }}
+                onMouseEnter={e => e.currentTarget.style.background = "var(--pg-accent-dark)"}
+                onMouseLeave={e => e.currentTarget.style.background = "var(--pg-accent)"}>
                 Start Earning Now
               </motion.button>
             </div>
@@ -542,7 +542,7 @@ export default function Home() {
         {/* ── CTA BANNER ── */}
         <Reveal as="section" className="mx-4 sm:mx-6 lg:mx-8 mb-14 sm:mb-20 rounded-3xl overflow-hidden relative"
           >
-          <div style={{ background: "#1E3A5F" }} className="relative overflow-hidden rounded-3xl">
+          <div style={{ background: "var(--pg-cta-bg)" }} className="relative overflow-hidden rounded-3xl">
             <div className="pg-blob absolute -top-16 -right-16 w-64 h-64 rounded-full opacity-10 pointer-events-none" style={{ background: "white" }} />
             <div className="pg-blob-alt absolute -bottom-12 -left-12 w-48 h-48 rounded-full opacity-10 pointer-events-none" style={{ background: "white" }} />
             <div className="relative z-10 text-center px-6 py-16 sm:py-20">
@@ -556,9 +556,9 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }} onClick={() => router.push("/listProperty")}
                   className="font-bold text-sm px-7 py-3.5 rounded-2xl cursor-pointer shadow-lg"
-                  style={{ background: "#F97316", color: "white" }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#ea6c0a"}
-                  onMouseLeave={e => e.currentTarget.style.background = "#F97316"}>
+                  style={{ background: "var(--pg-accent)", color: "white" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--pg-accent-dark)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "var(--pg-accent)"}>
                   Get Started Now
                 </motion.button>
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }} className="border font-semibold text-sm px-7 py-3.5 rounded-2xl cursor-pointer text-white"

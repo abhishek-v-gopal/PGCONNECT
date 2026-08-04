@@ -59,7 +59,7 @@ export default function InquiryForm({ propertyId }) {
   };
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
       <h2 className="text-xl font-bold">Send Inquiry</h2>
       <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
         <input
@@ -67,27 +67,27 @@ export default function InquiryForm({ propertyId }) {
           value={form.name}
           onChange={(e) => onChange("name", e.target.value)}
           placeholder="Full name"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
         />
         <input
           type="tel"
           value={form.phone}
           onChange={(e) => onChange("phone", e.target.value)}
           placeholder="Phone number"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
         />
         <input
           type="date"
           value={form.moveIn}
           onChange={(e) => onChange("moveIn", e.target.value)}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
         />
         <textarea
           value={form.message}
           onChange={(e) => onChange("message", e.target.value)}
           placeholder="Write your message"
           rows={4}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
         />
 
         <AnimatePresence>
@@ -96,7 +96,7 @@ export default function InquiryForm({ propertyId }) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="text-xs text-slate-600 overflow-hidden"
+              className="text-xs text-slate-600 dark:text-slate-400 overflow-hidden"
             >
               {feedback}
             </motion.p>

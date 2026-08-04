@@ -3,6 +3,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDismissableOverlay } from "../../lib/useDismissableOverlay";
 import {
   getOwnerInquiries,
   updateInquiryStatus,
@@ -18,15 +19,16 @@ import {
 
 const BOOKING_STATUS_STYLES = {
   pending: "bg-amber-50 text-amber-700 border border-amber-200",
-  confirmed: "bg-[#dbeafe] text-[#1D4ED8] border border-blue-200",
+  confirmed: "bg-[var(--pg-chip-bg)] text-[var(--pg-primary)] border border-blue-200",
   active: "bg-green-50 text-green-700 border border-green-200",
-  completed: "bg-slate-100 text-slate-600 border border-slate-200",
+  completed: "bg-slate-100 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700",
   cancelled: "bg-red-50 text-red-600 border border-red-200",
 };
 
 const PAYMENT_STATUS_STYLES = {
   unpaid: "bg-red-50 text-red-600 border border-red-200",
   paid: "bg-green-50 text-green-700 border border-green-200",
+  due: "bg-amber-50 text-amber-700 border border-amber-200",
   overdue: "bg-red-50 text-red-600 border border-red-200",
   processing: "bg-amber-50 text-amber-700 border border-amber-200",
 };
@@ -57,6 +59,7 @@ export default function OwnerDashboard() {
   const [inquirySearch, setInquirySearch] = useState("");
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useDismissableOverlay(sidebarOpen, () => setSidebarOpen(false));
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const [user, setUser] = useState(null);
@@ -328,22 +331,22 @@ export default function OwnerDashboard() {
         `}</style>
       </Head>
 
-      <div className="min-h-screen flex flex-col" style={{ background: "#EFF6FF", color: "#1E3A5F" }}>
+      <div className="min-h-screen flex flex-col" style={{ background: "var(--pg-bg)", color: "var(--pg-text)" }}>
 
         {/* ── TOP NAV ── */}
-        <header className="sticky top-0 z-50 bg-white border-b border-blue-100 shadow-sm h-14 flex items-center px-4 sm:px-6 gap-4">
-          <button className="lg:hidden p-1.5 rounded-lg transition-colors" style={{ color: "#1E3A5F60" }} onClick={() => setSidebarOpen(true)}>
+        <header className="sticky top-0 z-50 bg-white dark:bg-slate-800 border-b border-blue-100 shadow-sm h-14 flex items-center px-4 sm:px-6 gap-4">
+          <button className="lg:hidden p-3 rounded-lg transition-colors" aria-label="Open menu" style={{ color: "var(--pg-text-tertiary)" }} onClick={() => setSidebarOpen(true)}>
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
 
           <div className="lg:hidden">
-            <p className="font-bold text-base leading-tight" style={{ color: "#1D4ED8" }}>PG Connect</p>
+            <p className="font-bold text-base leading-tight" style={{ color: "var(--pg-primary)" }}>PG Connect</p>
           </div>
 
           <div className="hidden lg:flex items-center gap-1 ml-4">
-            <span className="text-lg font-bold mr-6" style={{ color: "#1E3A5F" }}>Owner Dashboard</span>
+            <span className="text-lg font-bold mr-6" style={{ color: "var(--pg-text)" }}>Owner Dashboard</span>
           </div>
 
           <div className="flex-1" />
@@ -354,23 +357,23 @@ export default function OwnerDashboard() {
               className="flex items-center gap-2.5 cursor-pointer group"
             >
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-[#1E3A5F] leading-tight">
+                <p className="text-sm font-semibold text-[var(--pg-text)] leading-tight">
                   {userLoading ? "..." : user ? `${user.first_name} ${user.last_name}` : "Owner"}
                 </p>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider">{user?.role || "Owner"}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">{user?.role || "Owner"}</p>
               </div>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: "#1D4ED8" }}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: "var(--pg-primary)" }}>
                 {initials || "O"}
               </div>
             </button>
             {userMenuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-blue-100 py-1.5 z-50">
-                  <p className="px-3.5 py-2 text-xs text-[#1E3A5F80] truncate border-b border-blue-50">{user?.email}</p>
+                <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-blue-100 py-1.5 z-50">
+                  <p className="px-3.5 py-2 text-xs text-[var(--pg-text-secondary)] truncate border-b border-blue-50">{user?.email}</p>
                   <button
                     onClick={() => { setActiveNav("Settings"); setUserMenuOpen(false); }}
-                    className="w-full text-left px-3.5 py-2 text-sm text-[#1E3A5F] hover:bg-blue-50 cursor-pointer"
+                    className="w-full text-left px-3.5 py-2 text-sm text-[var(--pg-text)] hover:bg-blue-50 cursor-pointer"
                   >
                     Account Settings
                   </button>
@@ -389,9 +392,9 @@ export default function OwnerDashboard() {
             <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setSidebarOpen(false)} />
           )}
 
-          <aside className={`
+          <aside ref={sidebarRef} className={`
             fixed inset-y-0 left-0 z-50
-            h-screen w-56 bg-white border-r border-blue-100
+            h-screen w-56 bg-white dark:bg-slate-800 border-r border-blue-100
             flex flex-col overflow-hidden
             transition-transform duration-300
             ${sidebarOpen ? "translate-x-0 slide-in" : "-translate-x-full lg:translate-x-0"}
@@ -399,17 +402,17 @@ export default function OwnerDashboard() {
           `}>
             <div className="hidden lg:block px-5 pt-6 pb-4">
               <button onClick={() => router.push("/")} className="cursor-pointer">
-                <p className="font-bold text-base leading-tight" style={{ color: "#1D4ED8" }}>PG Connect</p>
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mt-0.5">Owner Portal</p>
+                <p className="font-bold text-base leading-tight" style={{ color: "var(--pg-primary)" }}>PG Connect</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-semibold mt-0.5">Owner Portal</p>
               </button>
             </div>
 
-            <div className="lg:hidden flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
+            <div className="lg:hidden flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <p className="font-serif-display text-[#1D4ED8] text-base font-bold">PG Connect</p>
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Owner Portal</p>
+                <p className="font-serif-display text-[var(--pg-primary)] text-base font-bold">PG Connect</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-semibold">Owner Portal</p>
               </div>
-              <button onClick={() => setSidebarOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-600">
+              <button onClick={() => setSidebarOpen(false)} aria-label="Close menu" className="p-3 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-400">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -422,9 +425,9 @@ export default function OwnerDashboard() {
                   key={item.label}
                   onClick={() => { setActiveNav(item.label); setSidebarOpen(false); }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer text-left"
-                  style={activeNav === item.label ? { background: "#dbeafe", color: "#1D4ED8" } : { color: "#1E3A5F80" }}
+                  style={activeNav === item.label ? { background: "var(--pg-chip-bg)", color: "var(--pg-primary)" } : { color: "var(--pg-text-secondary)" }}
                 >
-                  <span style={activeNav === item.label ? { color: "#1D4ED8" } : { color: "#1E3A5F60" }}>{item.icon}</span>
+                  <span style={activeNav === item.label ? { color: "var(--pg-primary)" } : { color: "var(--pg-text-tertiary)" }}>{item.icon}</span>
                   {item.label}
                 </button>
               ))}
@@ -434,7 +437,7 @@ export default function OwnerDashboard() {
               <button
                 onClick={() => router.push("/listProperty")}
                 className="w-full flex items-center justify-center gap-2 active:scale-[0.98] text-white text-sm font-semibold py-2.5 rounded-xl transition-all cursor-pointer"
-                style={{ background: "#F97316" }}
+                style={{ background: "var(--pg-accent)" }}
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -445,25 +448,25 @@ export default function OwnerDashboard() {
           </aside>
 
           {/* ── MAIN CONTENT ── */}
-          <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 min-w-0">
+          <main id="main-content" className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 min-w-0">
 
             {activeNav === "Dashboard" && (
               <>
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-7">
                   <div>
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight" style={{ color: "#1E3A5F" }}>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight" style={{ color: "var(--pg-text)" }}>
                       Welcome back{user ? `, ${user.first_name}` : ""}.
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
                       Your properties are currently at{" "}
-                      <strong className="text-slate-700">{propertiesLoading ? "..." : `${occupancyPct}% occupancy`}</strong>. You have{" "}
-                      <strong className="text-slate-700">{inquiries.length} inquiries</strong> awaiting review.
+                      <strong className="text-slate-700 dark:text-slate-300">{propertiesLoading ? "..." : `${occupancyPct}% occupancy`}</strong>. You have{" "}
+                      <strong className="text-slate-700 dark:text-slate-300">{inquiries.length} inquiries</strong> awaiting review.
                     </p>
                   </div>
                   <button
                     onClick={() => router.push("/listProperty")}
                     className="flex items-center gap-2 active:scale-[0.98] text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0"
-                    style={{ background: "#1D4ED8" }}
+                    style={{ background: "var(--pg-primary)" }}
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -474,22 +477,22 @@ export default function OwnerDashboard() {
 
                 {/* STAT CARDS */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-2xl" />
                     <div className="flex items-start justify-between mb-4 pl-2">
-                      <div className="w-10 h-10 bg-[#dbeafe] rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-[#1D4ED8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <div className="w-10 h-10 bg-[var(--pg-chip-bg)] rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-[var(--pg-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10" /><path d="M2 14h20" />
                         </svg>
                       </div>
-                      <span className="text-xs font-bold text-slate-500 bg-[#EFF6FF] border border-slate-200 px-2 py-0.5 rounded-full">{properties.length} PGs</span>
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-[var(--pg-bg)] border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full">{properties.length} PGs</span>
                     </div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Total Bed Capacity</p>
-                    <p className="text-4xl font-bold text-[#1E3A5F] mt-1 pl-2">{propertiesLoading ? "—" : totalBeds}</p>
-                    <p className="text-xs text-slate-400 mt-2 pl-2">Across {properties.length} {properties.length === 1 ? "location" : "locations"}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 pl-2">Total Bed Capacity</p>
+                    <p className="text-4xl font-bold text-[var(--pg-text)] mt-1 pl-2">{propertiesLoading ? "—" : totalBeds}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 pl-2">Across {properties.length} {properties.length === 1 ? "location" : "locations"}</p>
                   </div>
 
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-green-500 rounded-l-2xl" />
                     <div className="flex items-start justify-between mb-4 pl-2">
                       <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
@@ -500,8 +503,8 @@ export default function OwnerDashboard() {
                       </div>
                       <span className="text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">{propertiesLoading ? "—" : `${occupancyPct}%`}</span>
                     </div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Occupied Beds</p>
-                    <p className="text-4xl font-bold text-[#1E3A5F] mt-1 pl-2">{propertiesLoading ? "—" : occupiedBeds}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 pl-2">Occupied Beds</p>
+                    <p className="text-4xl font-bold text-[var(--pg-text)] mt-1 pl-2">{propertiesLoading ? "—" : occupiedBeds}</p>
                     <div className="flex items-center gap-1.5 mt-2 pl-2">
                       <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
                       <p className="text-xs text-green-600 font-medium">
@@ -510,7 +513,7 @@ export default function OwnerDashboard() {
                     </div>
                   </div>
 
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 hover:shadow-sm transition-shadow relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-red-400 rounded-l-2xl" />
                     <div className="flex items-start justify-between mb-4 pl-2">
                       <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
@@ -519,8 +522,8 @@ export default function OwnerDashboard() {
                         </svg>
                       </div>
                     </div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-2">Available Beds</p>
-                    <p className="text-4xl font-bold text-[#1E3A5F] mt-1 pl-2">{propertiesLoading ? "—" : availableBeds}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 pl-2">Available Beds</p>
+                    <p className="text-4xl font-bold text-[var(--pg-text)] mt-1 pl-2">{propertiesLoading ? "—" : availableBeds}</p>
                     <div className="flex items-center mt-2 pl-2 gap-1 flex-wrap">
                       {properties.slice(0, 3).map((p, i) => (
                         <div
@@ -532,43 +535,43 @@ export default function OwnerDashboard() {
                         </div>
                       ))}
                       {properties.length > 3 && (
-                        <span className="text-xs text-slate-400 ml-1 font-medium">+{properties.length - 3}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 ml-1 font-medium">+{properties.length - 3}</span>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* PROPERTY PERFORMANCE */}
-                <div className="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
-                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
-                    <h2 className="text-lg font-bold text-[#1E3A5F]">Your Properties</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">How many people have viewed and liked each listing.</p>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl mb-6 overflow-hidden">
+                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                    <h2 className="text-lg font-bold text-[var(--pg-text)]">Your Properties</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">How many people have viewed and liked each listing.</p>
                   </div>
                   {propertiesLoading ? (
-                    <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">Loading properties...</div>
+                    <div className="px-5 sm:px-6 py-6 text-sm text-slate-500 dark:text-slate-400">Loading properties...</div>
                   ) : properties.length === 0 ? (
-                    <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">You haven't listed a property yet.</div>
+                    <div className="px-5 sm:px-6 py-6 text-sm text-slate-500 dark:text-slate-400">You haven't listed a property yet.</div>
                   ) : (
                     <div className="divide-y divide-slate-50">
                       {properties.map((p) => (
                         <div key={p.id} className="px-5 sm:px-6 py-4 flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#EFF6FF] shrink-0">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-[var(--pg-bg)] shrink-0">
                             {p.property_images?.[0]?.image_url && (
                               <img src={p.property_images[0].image_url} alt={p.name} className="w-full h-full object-cover" />
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-[#1E3A5F] truncate">{p.name}</p>
-                            <p className="text-xs text-slate-400">{p.city}</p>
+                            <p className="text-sm font-semibold text-[var(--pg-text)] truncate">{p.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{p.city}</p>
                           </div>
                           <div className="flex items-center gap-5 shrink-0">
                             <div className="flex items-center gap-1.5" title="Views">
-                              <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                              <span className="text-sm font-bold text-[#1E3A5F]">{p.views ?? 0}</span>
+                              <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                              <span className="text-sm font-bold text-[var(--pg-text)]">{p.views ?? 0}</span>
                             </div>
                             <div className="flex items-center gap-1.5" title="Likes">
                               <svg className="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
-                              <span className="text-sm font-bold text-[#1E3A5F]">{p.saves_count ?? 0}</span>
+                              <span className="text-sm font-bold text-[var(--pg-text)]">{p.saves_count ?? 0}</span>
                             </div>
                           </div>
                         </div>
@@ -578,15 +581,15 @@ export default function OwnerDashboard() {
                 </div>
 
                 {/* OWNER INQUIRIES */}
-                <div className="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
-                  <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100 flex flex-col gap-3">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl mb-6 overflow-hidden">
+                  <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800 flex flex-col gap-3">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
-                        <h2 className="text-lg font-bold text-[#1E3A5F]">Owner Inquiries</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Messages from students interested in your properties.</p>
+                        <h2 className="text-lg font-bold text-[var(--pg-text)]">Owner Inquiries</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Messages from students interested in your properties.</p>
                       </div>
                       <div className="relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                         </svg>
                         <input
@@ -594,35 +597,35 @@ export default function OwnerDashboard() {
                           placeholder="Search inquiries..."
                           value={inquirySearch}
                           onChange={(e) => setInquirySearch(e.target.value)}
-                          className="pl-9 pr-4 py-2 bg-[#EFF6FF] border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full sm:w-56"
+                          className="pl-9 pr-4 py-2 bg-[var(--pg-bg)] border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full sm:w-56"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {inquiryLoading && <div className="px-5 sm:px-6 py-5 text-sm text-slate-500">Loading inquiries...</div>}
+                  {inquiryLoading && <div className="px-5 sm:px-6 py-5 text-sm text-slate-500 dark:text-slate-400">Loading inquiries...</div>}
                   {!inquiryLoading && inquiryError && <div className="px-5 sm:px-6 py-5 text-sm text-red-500">{inquiryError}</div>}
                   {!inquiryLoading && !inquiryError && filteredInquiries.length === 0 && (
-                    <div className="px-5 sm:px-6 py-5 text-sm text-slate-500">No inquiries found.</div>
+                    <div className="px-5 sm:px-6 py-5 text-sm text-slate-500 dark:text-slate-400">No inquiries found.</div>
                   )}
                   {!inquiryLoading && !inquiryError && filteredInquiries.length > 0 && (
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-slate-100">
+                          <tr className="border-b border-slate-100 dark:border-slate-800">
                             {["Name", "Property", "Phone", "Move-in", "Message", "Status", "Created"].map((h) => (
-                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-6 py-3">{h}</th>
+                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 px-6 py-3">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                           {filteredInquiries.map((item) => (
-                            <tr key={item.id} className={`hover:bg-[#EFF6FF]/70 transition-colors ${isSeen(item) ? "" : "bg-amber-50/30"}`}>
-                              <td className="px-6 py-4 text-sm font-semibold text-[#1E3A5F]">{item?.name || "-"}</td>
-                              <td className="px-6 py-4 text-sm text-slate-700">{item?.properties?.name || "-"}</td>
-                              <td className="px-6 py-4 text-sm text-slate-700">{item?.phone || "-"}</td>
-                              <td className="px-6 py-4 text-sm text-slate-700">{formatDate(item?.move_in)}</td>
-                              <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">{item?.message || "-"}</td>
+                            <tr key={item.id} className={`hover:bg-[var(--pg-bg)]/70 transition-colors ${isSeen(item) ? "" : "bg-amber-50/30"}`}>
+                              <td className="px-6 py-4 text-sm font-semibold text-[var(--pg-text)]">{item?.name || "-"}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{item?.properties?.name || "-"}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{item?.phone || "-"}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{formatDate(item?.move_in)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 max-w-xs truncate">{item?.message || "-"}</td>
                               <td className="px-6 py-4">
                                 <select
                                   value={item?.status || "new"}
@@ -631,13 +634,13 @@ export default function OwnerDashboard() {
                                     markInquirySeen(item.id);
                                     handleUpdateInquiryStatus(item.id, e.target.value);
                                   }}
-                                  className={`text-[11px] font-bold px-2.5 py-1 rounded-full border cursor-pointer outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 ${item?.status === "closed" ? "bg-[#EFF6FF] text-slate-600 border-slate-200 focus:ring-slate-100" : item?.status === "contacted" ? "bg-green-50 text-green-700 border-green-200 focus:ring-green-100" : item?.status === "seen" ? "bg-amber-50 text-amber-700 border-amber-200 focus:ring-amber-100" : "bg-[#dbeafe] text-blue-700 border-blue-200 focus:ring-blue-100"}`}>
+                                  className={`text-[11px] font-bold px-2.5 py-1 rounded-full border cursor-pointer outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 ${item?.status === "closed" ? "bg-[var(--pg-bg)] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 focus:ring-slate-100" : item?.status === "contacted" ? "bg-green-50 text-green-700 border-green-200 focus:ring-green-100" : item?.status === "seen" ? "bg-amber-50 text-amber-700 border-amber-200 focus:ring-amber-100" : "bg-[var(--pg-chip-bg)] text-blue-700 border-blue-200 focus:ring-blue-100"}`}>
                                   <option value="new">new</option>
                                   <option value="contacted">contacted</option>
                                   <option value="closed">closed</option>
                                 </select>
                               </td>
-                              <td className="px-6 py-4 text-sm text-slate-500">{formatDate(item?.created_at)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(item?.created_at)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -650,14 +653,14 @@ export default function OwnerDashboard() {
 
             {/* BOOKINGS TAB */}
             {activeNav === "Bookings" && (
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100">
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
                   <div>
-                    <h2 className="text-lg font-bold text-[#1E3A5F]">Bookings ({bookings.length})</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Tenants currently booked across your properties.</p>
+                    <h2 className="text-lg font-bold text-[var(--pg-text)]">Bookings ({bookings.length})</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Tenants currently booked across your properties.</p>
                   </div>
                   <div className="relative">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
                     <input
@@ -665,45 +668,45 @@ export default function OwnerDashboard() {
                       placeholder="Search tenants..."
                       value={bookingSearch}
                       onChange={(e) => setBookingSearch(e.target.value)}
-                      className="pl-9 pr-4 py-2 bg-[#EFF6FF] border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full sm:w-48"
+                      className="pl-9 pr-4 py-2 bg-[var(--pg-bg)] border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all w-full sm:w-48"
                     />
                   </div>
                 </div>
 
-                {bookingsLoading && <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">Loading bookings...</div>}
+                {bookingsLoading && <div className="px-5 sm:px-6 py-6 text-sm text-slate-500 dark:text-slate-400">Loading bookings...</div>}
                 {!bookingsLoading && bookingsError && <div className="px-5 sm:px-6 py-6 text-sm text-red-500">{bookingsError}</div>}
                 {!bookingsLoading && !bookingsError && filteredBookings.length === 0 && (
-                  <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">No bookings yet.</div>
+                  <div className="px-5 sm:px-6 py-6 text-sm text-slate-500 dark:text-slate-400">No bookings yet.</div>
                 )}
                 {!bookingsLoading && !bookingsError && filteredBookings.length > 0 && (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b border-slate-100">
-                          {["Tenant", "Property & Room", "Move-in", "Monthly Rent", "Status", "Payment"].map((h) => (
-                            <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-6 py-3">{h}</th>
+                        <tr className="border-b border-slate-100 dark:border-slate-800">
+                          {["Tenant", "Property & Room", "Move-in", "Monthly Rent", "Status", "This Month's Rent"].map((h) => (
+                            <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 px-6 py-3">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
                         {filteredBookings.map((b) => (
-                          <tr key={b.id} className="hover:bg-[#EFF6FF]/70 transition-colors">
+                          <tr key={b.id} className="hover:bg-[var(--pg-bg)]/70 transition-colors">
                             <td className="px-6 py-4">
-                              <p className="text-sm font-semibold text-[#1E3A5F]">{b.tenant?.first_name} {b.tenant?.last_name}</p>
-                              <p className="text-xs text-slate-400">{b.tenant?.phone || "-"}</p>
+                              <p className="text-sm font-semibold text-[var(--pg-text)]">{b.tenant?.first_name} {b.tenant?.last_name}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{b.tenant?.phone || "-"}</p>
                             </td>
                             <td className="px-6 py-4">
                               <p className="text-sm font-semibold text-slate-800">{b.properties?.name}</p>
-                              <p className="text-xs text-slate-400">{b.room_type}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{b.room_type}</p>
                             </td>
-                            <td className="px-6 py-4 text-sm text-slate-700">{formatDate(b.move_in_date)}</td>
-                            <td className="px-6 py-4 text-sm font-bold text-[#1E3A5F]">{formatCurrency(b.monthly_rent)}</td>
+                            <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{formatDate(b.move_in_date)}</td>
+                            <td className="px-6 py-4 text-sm font-bold text-[var(--pg-text)]">{formatCurrency(b.monthly_rent)}</td>
                             <td className="px-6 py-4">
                               <select
                                 value={b.status}
                                 disabled={updatingBookingId === b.id}
                                 onChange={(e) => handleUpdateBookingStatus(b.id, e.target.value)}
-                                className={`text-[11px] font-bold px-2.5 py-1 rounded-full cursor-pointer outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 ${BOOKING_STATUS_STYLES[b.status] || "bg-slate-100 text-slate-600 border border-slate-200"}`}>
+                                className={`text-[11px] font-bold px-2.5 py-1 rounded-full cursor-pointer outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 ${BOOKING_STATUS_STYLES[b.status] || "bg-slate-100 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"}`}>
                                 <option value="pending">pending</option>
                                 <option value="confirmed">confirmed</option>
                                 <option value="active">active</option>
@@ -712,7 +715,13 @@ export default function OwnerDashboard() {
                               </select>
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${PAYMENT_STATUS_STYLES[b.payment_status] || "bg-slate-100 text-slate-600"}`}>{b.payment_status}</span>
+                              {b.rent_status ? (
+                                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${PAYMENT_STATUS_STYLES[b.rent_status] || "bg-slate-100 text-slate-600 dark:text-slate-400"}`}>
+                                  {b.rent_status.toUpperCase()}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-slate-300">—</span>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -726,47 +735,47 @@ export default function OwnerDashboard() {
             {/* PAYMENTS TAB */}
             {activeNav === "Payments" && (
               <div className="space-y-6">
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 flex items-center justify-between">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Received</p>
-                    <p className="text-3xl font-bold text-[#1E3A5F] mt-1">{payoutsLoading ? "—" : formatCurrency(payoutsTotal)}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Total Received</p>
+                    <p className="text-3xl font-bold text-[var(--pg-text)] mt-1">{payoutsLoading ? "—" : formatCurrency(payoutsTotal)}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "#dbeafe" }}>
-                    <svg className="w-6 h-6" style={{ color: "#1D4ED8" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "var(--pg-chip-bg)" }}>
+                    <svg className="w-6 h-6" style={{ color: "var(--pg-primary)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
-                    <h2 className="text-lg font-bold text-[#1E3A5F]">Payment History</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Rent payments received through PG Connect, after platform fee.</p>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                    <h2 className="text-lg font-bold text-[var(--pg-text)]">Payment History</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Rent payments received through PG Connect, after platform fee.</p>
                   </div>
-                  {payoutsLoading && <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">Loading payments...</div>}
+                  {payoutsLoading && <div className="px-5 sm:px-6 py-6 text-sm text-slate-500 dark:text-slate-400">Loading payments...</div>}
                   {!payoutsLoading && payoutsError && <div className="px-5 sm:px-6 py-6 text-sm text-red-500">{payoutsError}</div>}
                   {!payoutsLoading && !payoutsError && payouts.length === 0 && (
-                    <div className="px-5 sm:px-6 py-6 text-sm text-slate-400">No payments received yet.</div>
+                    <div className="px-5 sm:px-6 py-6 text-sm text-slate-500 dark:text-slate-400">No payments received yet.</div>
                   )}
                   {!payoutsLoading && !payoutsError && payouts.length > 0 && (
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-slate-100">
+                          <tr className="border-b border-slate-100 dark:border-slate-800">
                             {["Tenant", "Property", "Rent", "Platform Fee", "You Receive", "Date"].map((h) => (
-                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-6 py-3">{h}</th>
+                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 px-6 py-3">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                           {payouts.map((p) => (
-                            <tr key={p.id} className="hover:bg-[#EFF6FF]/70 transition-colors">
-                              <td className="px-6 py-4 text-sm font-semibold text-[#1E3A5F]">
+                            <tr key={p.id} className="hover:bg-[var(--pg-bg)]/70 transition-colors">
+                              <td className="px-6 py-4 text-sm font-semibold text-[var(--pg-text)]">
                                 {p.bookings?.tenant?.first_name} {p.bookings?.tenant?.last_name}
                               </td>
-                              <td className="px-6 py-4 text-sm text-slate-700">{p.properties?.name}</td>
-                              <td className="px-6 py-4 text-sm text-slate-700">{formatCurrency(p.amount)}</td>
-                              <td className="px-6 py-4 text-sm text-slate-400">-{formatCurrency(p.platform_fee)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{p.properties?.name}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{formatCurrency(p.amount)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">-{formatCurrency(p.platform_fee)}</td>
                               <td className="px-6 py-4 text-sm font-bold text-green-700">{formatCurrency(p.owner_payout)}</td>
-                              <td className="px-6 py-4 text-sm text-slate-500">{formatDate(p.created_at)}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(p.created_at)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -780,42 +789,42 @@ export default function OwnerDashboard() {
             {/* SETTINGS TAB */}
             {activeNav === "Settings" && (
               <div className="space-y-6 max-w-xl">
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
-                    <h2 className="text-lg font-bold text-[#1E3A5F]">Account</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">{user?.email}</p>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                    <h2 className="text-lg font-bold text-[var(--pg-text)]">Account</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{user?.email}</p>
                   </div>
                   <form onSubmit={handleSettingsSave} className="px-5 sm:px-6 py-5 space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">First Name</label>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">First Name</label>
                         <input
                           type="text"
                           value={settingsForm.first_name}
                           onChange={(e) => setSettingsForm((f) => ({ ...f, first_name: e.target.value }))}
                           className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                          style={{ borderColor: "#bfdbfe" }}
+                          style={{ borderColor: "var(--pg-border)" }}
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Last Name</label>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">Last Name</label>
                         <input
                           type="text"
                           value={settingsForm.last_name}
                           onChange={(e) => setSettingsForm((f) => ({ ...f, last_name: e.target.value }))}
                           className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                          style={{ borderColor: "#bfdbfe" }}
+                          style={{ borderColor: "var(--pg-border)" }}
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Phone</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">Phone</label>
                       <input
                         type="tel"
                         value={settingsForm.phone}
                         onChange={(e) => setSettingsForm((f) => ({ ...f, phone: e.target.value }))}
                         className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                        style={{ borderColor: "#bfdbfe" }}
+                        style={{ borderColor: "var(--pg-border)" }}
                       />
                     </div>
                     {settingsMessage && <p className="text-xs" style={{ color: settingsMessage.startsWith("Failed") ? "#dc2626" : "#15803d" }}>{settingsMessage}</p>}
@@ -823,36 +832,36 @@ export default function OwnerDashboard() {
                       type="submit"
                       disabled={settingsSaving}
                       className="text-sm font-semibold px-5 py-2.5 rounded-xl text-white cursor-pointer disabled:opacity-60"
-                      style={{ background: "#1D4ED8" }}
+                      style={{ background: "var(--pg-primary)" }}
                     >
                       {settingsSaving ? "Saving..." : "Save Changes"}
                     </button>
                   </form>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
-                    <h2 className="text-lg font-bold text-[#1E3A5F]">Change Password</h2>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+                  <div className="px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                    <h2 className="text-lg font-bold text-[var(--pg-text)]">Change Password</h2>
                   </div>
                   <form onSubmit={handlePasswordSave} className="px-5 sm:px-6 py-5 space-y-4">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">New Password</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">New Password</label>
                       <input
                         type="password"
                         value={passwordForm.new_password}
                         onChange={(e) => setPasswordForm((f) => ({ ...f, new_password: e.target.value }))}
                         className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                        style={{ borderColor: "#bfdbfe" }}
+                        style={{ borderColor: "var(--pg-border)" }}
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Confirm New Password</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">Confirm New Password</label>
                       <input
                         type="password"
                         value={passwordForm.confirm_password}
                         onChange={(e) => setPasswordForm((f) => ({ ...f, confirm_password: e.target.value }))}
                         className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                        style={{ borderColor: "#bfdbfe" }}
+                        style={{ borderColor: "var(--pg-border)" }}
                       />
                     </div>
                     {passwordMessage && <p className="text-xs" style={{ color: passwordMessage.startsWith("Failed") || passwordMessage.includes("match") || passwordMessage.includes("must be") ? "#dc2626" : "#15803d" }}>{passwordMessage}</p>}
@@ -860,7 +869,7 @@ export default function OwnerDashboard() {
                       type="submit"
                       disabled={passwordSaving}
                       className="text-sm font-semibold px-5 py-2.5 rounded-xl text-white cursor-pointer disabled:opacity-60"
-                      style={{ background: "#1D4ED8" }}
+                      style={{ background: "var(--pg-primary)" }}
                     >
                       {passwordSaving ? "Updating..." : "Update Password"}
                     </button>
@@ -873,11 +882,11 @@ export default function OwnerDashboard() {
             <div className="h-8" />
 
             {/* Footer */}
-            <footer className="border-t border-slate-200 pt-6">
+            <footer className="border-t border-slate-200 dark:border-slate-700 pt-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <p className="font-serif-display text-sm font-bold text-[#1E3A5F]">PG Connect</p>
-                  <p className="text-xs text-slate-400 mt-0.5">© {new Date().getFullYear()} PG Connect. Curated Student Living.</p>
+                  <p className="font-serif-display text-sm font-bold text-[var(--pg-text)]">PG Connect</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">© {new Date().getFullYear()} PG Connect. Curated Student Living.</p>
                 </div>
                 <div className="flex flex-wrap gap-5">
                   {[
@@ -886,7 +895,7 @@ export default function OwnerDashboard() {
                     { label: "Help Center", href: "/help" },
                     { label: "Contact Us", href: "/contact" },
                   ].map((l) => (
-                    <Link key={l.label} href={l.href} className="text-xs text-slate-500 hover:text-[#1D4ED8] transition-colors">{l.label}</Link>
+                    <Link key={l.label} href={l.href} className="text-xs text-slate-500 dark:text-slate-400 hover:text-[var(--pg-primary)] transition-colors">{l.label}</Link>
                   ))}
                 </div>
               </div>

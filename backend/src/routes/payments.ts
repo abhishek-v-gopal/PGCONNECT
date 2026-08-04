@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import { getSupabase } from '../lib/supabase'
 import { authMiddleware, requireRole } from '../middleware/auth'
+import { AGENT_RECURRING_RATE } from '../lib/commission'
+import { reclaimOrExtendBed, occupyBed, releaseBed, claimBedForRoom } from '../lib/beds'
 import type { Env } from '../types'
 
 export const paymentsRouter = new Hono<Env>()
@@ -54,6 +56,20 @@ paymentsRouter.post('/create-order', authMiddleware, requireRole('student'), asy
   if (!['confirmed', 'active'].includes(booking.status)) {
     return c.json({ success: false, message: 'Booking is not active' }, 400)
   }
+  if (!booking.bed_id) {
+    return c.json({ success: false, message: 'No bed is reserved for this booking yet — ask the owner to confirm it first' }, 400)
+  }
+
+  // First month's payment: the bed is still 'locked' from the owner-confirm
+  // step, so re-lock it (extends the hold) for the Razorpay checkout window.
+  // From month 2 onward the booking is already 'active' and the bed is
+  // permanently 'occupied' — nothing to (re)lock.
+  if (booking.status === 'confirmed') {
+    const relocked = await reclaimOrExtendBed(supabase, booking.bed_id, user.id, booking.id)
+    if (!relocked) {
+      return c.json({ success: false, message: 'Your reserved bed is no longer available. Please contact the owner.' }, 409)
+    }
+  }
 
   const order = await razorpayRequest(c.env, '/orders', 'POST', {
     amount: Math.round(booking.monthly_rent * 100),
@@ -104,7 +120,7 @@ paymentsRouter.post('/verify', authMiddleware, requireRole('student'), async (c)
 
   const { data: payment } = await supabase
     .from('payments')
-    .select('*, bookings(monthly_rent, property_id, properties(referred_by, commission_option))')
+    .select('*, bookings(monthly_rent, property_id, bed_id, room_type, properties(referred_by, commission_option, agent_id))')
     .eq('id', payment_id)
     .eq('tenant_id', user.id)
     .single()
@@ -114,71 +130,121 @@ paymentsRouter.post('/verify', authMiddleware, requireRole('student'), async (c)
   const rent = payment.amount as number
   const platformFee = rent * 0.05
   const referrerCommission = rent * 0.02
-  const platformRevenue = rent * 0.03
   const ownerPayout = rent * 0.95
 
-  const property = (payment.bookings as { properties: { referred_by: string | null; commission_option: string } })?.properties
+  const bookingInfo = payment.bookings as {
+    property_id: string; bed_id: string | null; room_type: string
+    properties: { referred_by: string | null; commission_option: string; agent_id: string | null }
+  }
+  const property = bookingInfo?.properties
   const referredBy = property?.referred_by ?? null
   const commissionOption = property?.commission_option ?? 'recurring'
+  const agentId = property?.agent_id ?? null
+  const agentCommission = agentId ? rent * AGENT_RECURRING_RATE : 0
+  const platformRevenue = platformFee - referrerCommission - agentCommission
 
   await supabase.from('payments').update({
     razorpay_payment_id,
     status: 'paid',
     platform_fee: platformFee,
     referrer_commission: referrerCommission,
+    agent_commission: agentCommission,
     platform_revenue: platformRevenue,
     owner_payout: ownerPayout,
   }).eq('id', payment_id)
 
   await supabase.from('bookings').update({ payment_status: 'paid', status: 'active' }).eq('id', payment.booking_id)
 
-  if (referredBy) {
-    // Check if one-time commission already paid
-    let shouldPay = true
-    if (commissionOption === 'one-time') {
+  // Money is already captured by Razorpay at this point — the tenant must
+  // never see a failure past here, even if the bed's hold somehow lapsed.
+  if (bookingInfo?.bed_id) {
+    let occupied = await occupyBed(supabase, bookingInfo.bed_id, payment.booking_id)
+    let finalBedId = bookingInfo.bed_id
+
+    if (!occupied) {
+      const { data: room } = await supabase
+        .from('property_rooms')
+        .select('id')
+        .eq('property_id', bookingInfo.property_id)
+        .eq('type', bookingInfo.room_type)
+        .single()
+      const fallbackBed = room ? await claimBedForRoom(supabase, room.id, user.id, payment.booking_id) : null
+      if (fallbackBed) {
+        occupied = await occupyBed(supabase, fallbackBed.id, payment.booking_id)
+        finalBedId = fallbackBed.id
+      }
+    }
+
+    if (occupied) {
+      await supabase.from('bookings').update({ bed_id: finalBedId }).eq('id', payment.booking_id)
+    } else {
+      const { data: currentBooking } = await supabase.from('bookings').select('notes').eq('id', payment.booking_id).single()
+      const flag = '[AUTO-FLAG: bed conflict at payment verification — needs manual admin reassignment]'
+      await supabase.from('bookings').update({ notes: [currentBooking?.notes, flag].filter(Boolean).join(' ') }).eq('id', payment.booking_id)
+    }
+  }
+
+  const creditCommission = async (opts: {
+    earnerId: string
+    role: 'referrer' | 'agent'
+    amount: number
+    type: 'recurring' | 'one-time'
+    onlyIfNotAlreadyPaid: boolean
+  }) => {
+    if (opts.onlyIfNotAlreadyPaid) {
       const { count } = await supabase
         .from('commissions')
         .select('id', { count: 'exact' })
-        .eq('referrer_id', referredBy)
+        .eq('referrer_id', opts.earnerId)
         .eq('property_id', payment.property_id)
+        .eq('role', opts.role)
         .eq('status', 'paid')
-      shouldPay = (count ?? 0) === 0
+      if ((count ?? 0) > 0) return
     }
 
-    if (shouldPay) {
-      await supabase.from('commissions').insert({
-        referrer_id: referredBy,
-        property_id: payment.property_id,
-        payment_id: payment_id,
-        amount: referrerCommission,
-        type: commissionOption,
-        status: 'pending',
-        month: payment.month,
-      })
+    await supabase.from('commissions').insert({
+      referrer_id: opts.earnerId,
+      property_id: payment.property_id,
+      payment_id,
+      amount: opts.amount,
+      type: opts.type,
+      role: opts.role,
+      status: 'pending',
+      month: payment.month,
+    })
 
-      await supabase.rpc('add_commission_balance', {
-        referrer_id: referredBy,
-        amount: referrerCommission,
-      }).catch(() =>
-        supabase.from('profiles').update({
-          commission_balance: supabase.rpc('get_commission_balance', { uid: referredBy }) as unknown as number,
-          total_commission_earned: supabase.rpc('get_total_earned', { uid: referredBy }) as unknown as number,
-        }).eq('id', referredBy)
-      )
+    const { data: earnerProfile } = await supabase
+      .from('profiles')
+      .select('commission_balance, total_commission_earned')
+      .eq('id', opts.earnerId)
+      .single()
 
-      // Fallback: direct update if RPC not available
-      const { data: refProfile } = await supabase
-        .from('profiles')
-        .select('commission_balance, total_commission_earned')
-        .eq('id', referredBy)
-        .single()
-      if (refProfile) {
-        await supabase.from('profiles').update({
-          commission_balance: (refProfile.commission_balance ?? 0) + referrerCommission,
-          total_commission_earned: (refProfile.total_commission_earned ?? 0) + referrerCommission,
-        }).eq('id', referredBy)
-      }
+    if (earnerProfile) {
+      await supabase.from('profiles').update({
+        commission_balance: (earnerProfile.commission_balance ?? 0) + opts.amount,
+        total_commission_earned: (earnerProfile.total_commission_earned ?? 0) + opts.amount,
+      }).eq('id', opts.earnerId)
     }
+  }
+
+  if (referredBy) {
+    await creditCommission({
+      earnerId: referredBy,
+      role: 'referrer',
+      amount: referrerCommission,
+      type: commissionOption as 'recurring' | 'one-time',
+      onlyIfNotAlreadyPaid: commissionOption === 'one-time',
+    })
+  }
+
+  if (agentId) {
+    await creditCommission({
+      earnerId: agentId,
+      role: 'agent',
+      amount: agentCommission,
+      type: 'recurring',
+      onlyIfNotAlreadyPaid: false,
+    })
   }
 
   return c.json({ success: true, message: 'Payment verified and recorded', owner_payout: ownerPayout })
@@ -242,7 +308,26 @@ paymentsRouter.post('/webhook', async (c) => {
     const supabase = getSupabase(c.env)
     const orderId = event.payload?.payment?.entity?.order_id
     if (orderId) {
-      await supabase.from('payments').update({ status: 'failed' }).eq('razorpay_order_id', orderId)
+      const { data: failedPayment } = await supabase
+        .from('payments')
+        .update({ status: 'failed' })
+        .eq('razorpay_order_id', orderId)
+        .select('booking_id')
+        .single()
+
+      // Only release the bed if this was a first-payment attempt (booking
+      // still 'confirmed', never made it to 'active') — a failed later
+      // month's rent shouldn't evict an already-occupying tenant.
+      if (failedPayment?.booking_id) {
+        const { data: booking } = await supabase
+          .from('bookings')
+          .select('status, bed_id')
+          .eq('id', failedPayment.booking_id)
+          .single()
+        if (booking?.status === 'confirmed' && booking.bed_id) {
+          await releaseBed(supabase, booking.bed_id, failedPayment.booking_id)
+        }
+      }
     }
   }
 

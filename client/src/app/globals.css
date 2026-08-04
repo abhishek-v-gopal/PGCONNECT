@@ -1,14 +1,43 @@
 @import "tailwindcss";
 
+/* Keys off data-theme (set by ThemeToggle + the FOUC-prevention script in
+   layout.js) instead of prefers-color-scheme, so dark: utilities respond to
+   the user's manual toggle rather than only the OS setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --pg-primary: #1D4ED8;
   --pg-primary-dark: #1e40af;
   --pg-accent: #F97316;
+  --pg-accent-dark: #ea6c0a;
   --pg-bg: #EFF6FF;
   --pg-surface: #FFFFFF;
   --pg-text: #1E3A5F;
+  --pg-text-secondary: #1E3A5FBF;
+  --pg-text-tertiary: #1E3A5FB3;
+  --pg-border: #bfdbfe;
+  --pg-border-soft: #e0f2fe;
+  --pg-chip-bg: #dbeafe;
+  --pg-cta-bg: #1E3A5F; /* deliberately theme-invariant — a fixed dark promo band, not a surface */
   --background: #EFF6FF;
   --foreground: #1E3A5F;
+}
+
+:root[data-theme="dark"] {
+  --pg-primary: #60a5fa;
+  --pg-primary-dark: #3b82f6;
+  --pg-accent: #fb923c;
+  --pg-accent-dark: #f97316;
+  --pg-bg: #0f172a;
+  --pg-surface: #1e293b;
+  --pg-text: #e2e8f0;
+  --pg-text-secondary: #cbd5e1;
+  --pg-text-tertiary: #94a3b8;
+  --pg-border: #475569;
+  --pg-border-soft: #334155;
+  --pg-chip-bg: #1e3a8a;
+  --background: #0f172a;
+  --foreground: #e2e8f0;
 }
 
 @theme inline {
@@ -52,7 +81,7 @@ body {
 }
 
 .pg-skeleton {
-  background: linear-gradient(90deg, #EFF6FF 25%, #e0eaff 37%, #EFF6FF 63%);
+  background: linear-gradient(90deg, var(--pg-bg) 25%, var(--pg-border-soft) 37%, var(--pg-bg) 63%);
   background-size: 400% 100%;
   animation: pg-shimmer 1.6s ease-in-out infinite;
 }

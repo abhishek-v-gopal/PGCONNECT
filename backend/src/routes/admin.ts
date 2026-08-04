@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { getSupabase } from '../lib/supabase'
 import { authMiddleware, requireRole } from '../middleware/auth'
+import { AGENT_BOUNTY_AMOUNT } from '../lib/commission'
 import type { Env } from '../types'
 
 export const adminRouter = new Hono<Env>()
@@ -15,6 +16,8 @@ adminRouter.get('/stats', async (c) => {
     { count: totalUsers },
     { count: studentCount },
     { count: ownerCount },
+    { count: agentCount },
+    { count: pendingAgents },
     { count: totalProperties },
     { count: pendingVerifications },
     { count: activeListings },
@@ -23,6 +26,8 @@ adminRouter.get('/stats', async (c) => {
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student').eq('is_active', true),
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'owner').eq('is_active', true),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'agent').eq('is_active', true),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'agent').eq('is_verified_agent', false),
     supabase.from('properties').select('id', { count: 'exact', head: true }),
     supabase.from('properties').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('properties').select('id', { count: 'exact', head: true }).eq('status', 'verified'),
@@ -38,6 +43,8 @@ adminRouter.get('/stats', async (c) => {
       totalUsers: totalUsers ?? 0,
       studentCount: studentCount ?? 0,
       ownerCount: ownerCount ?? 0,
+      agentCount: agentCount ?? 0,
+      pendingAgents: pendingAgents ?? 0,
       totalProperties: totalProperties ?? 0,
       pendingVerifications: pendingVerifications ?? 0,
       activeListings: activeListings ?? 0,
@@ -129,7 +136,55 @@ adminRouter.patch('/properties/:id/verify', async (c) => {
     .single()
 
   if (error) return c.json({ success: false, message: error.message }, 500)
+
+  if (action === 'enable' && data.agent_id && !data.agent_bounty_paid) {
+    const { data: agentProfile } = await supabase
+      .from('profiles')
+      .select('commission_balance, total_commission_earned')
+      .eq('id', data.agent_id)
+      .single()
+
+    if (agentProfile) {
+      await supabase.from('commissions').insert({
+        referrer_id: data.agent_id,
+        property_id: data.id,
+        amount: AGENT_BOUNTY_AMOUNT,
+        type: 'bounty',
+        role: 'agent',
+        status: 'pending',
+        month: new Date().toISOString().slice(0, 7) + '-01',
+      })
+
+      await supabase.from('profiles').update({
+        commission_balance: (agentProfile.commission_balance ?? 0) + AGENT_BOUNTY_AMOUNT,
+        total_commission_earned: (agentProfile.total_commission_earned ?? 0) + AGENT_BOUNTY_AMOUNT,
+      }).eq('id', data.agent_id)
+
+      await supabase.from('properties').update({ agent_bounty_paid: true }).eq('id', data.id)
+    }
+  }
+
   return c.json({ success: true, message: `Property ${action}d`, property: data })
+})
+
+// PATCH /api/admin/agents/:id/verify
+adminRouter.patch('/agents/:id/verify', async (c) => {
+  const supabase = getSupabase(c.env)
+  const { action } = await c.req.json()
+  if (!['verify', 'unverify'].includes(action)) {
+    return c.json({ success: false, message: 'action must be verify or unverify' }, 400)
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ is_verified_agent: action === 'verify' })
+    .eq('id', c.req.param('id'))
+    .eq('role', 'agent')
+    .select()
+    .single()
+
+  if (error) return c.json({ success: false, message: error.message }, 500)
+  return c.json({ success: true, message: `Agent ${action === 'verify' ? 'approved' : 'unverified'}`, agent: data })
 })
 
 // GET /api/admin/users

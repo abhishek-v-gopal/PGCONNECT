@@ -4,9 +4,9 @@ export const metadata = {
 
 export default function OfflinePage() {
   return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-6" style={{ color: "#1E3A5F" }}>
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: "#EFF6FF" }}>
-        <svg className="w-8 h-8" style={{ color: "#1D4ED8" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-6" style={{ color: "var(--pg-text)" }}>
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: "var(--pg-bg)" }}>
+        <svg className="w-8 h-8" style={{ color: "var(--pg-primary)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="1" y1="1" x2="23" y2="23" />
           <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
           <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
@@ -17,7 +17,7 @@ export default function OfflinePage() {
         </svg>
       </div>
       <h1 className="text-xl font-bold">You&apos;re offline</h1>
-      <p className="text-sm mt-2" style={{ color: "#1E3A5F80" }}>
+      <p className="text-sm mt-2" style={{ color: "var(--pg-text-secondary)" }}>
         Check your connection and try again. Pages you&apos;ve already visited may still be available.
       </p>
     </div>

@@ -205,13 +205,13 @@ export default async function PropertyDetailPage({ params }) {
 
   if (!property) {
     return (
-      <div className="min-h-screen bg-[#EFF6FF] text-[#1E3A5F]">
+      <div className="min-h-screen bg-[var(--pg-bg)] text-[var(--pg-text)]">
         <Navbar />
-        <div className="flex items-center justify-center px-4 py-24 text-center text-[#1E3A5F80]">
+        <div className="flex items-center justify-center px-4 py-24 text-center text-[var(--pg-text-secondary)]">
           <div>
-            <p className="text-lg font-semibold text-[#1E3A5F]">Property not found</p>
+            <p className="text-lg font-semibold text-[var(--pg-text)]">Property not found</p>
             <p className="mt-2 text-sm">The listing may have been removed or the URL is invalid.</p>
-            <Link href="/propertys" className="mt-5 inline-block rounded-full border border-[#bfdbfe] px-4 py-2 text-sm font-semibold text-[#1E3A5F] hover:border-blue-300 hover:text-[#1D4ED8]">
+            <Link href="/propertys" className="mt-5 inline-block rounded-full border border-[var(--pg-border)] px-4 py-2 text-sm font-semibold text-[var(--pg-text)] hover:border-blue-300 hover:text-[var(--pg-primary)]">
               Back to Listings
             </Link>
           </div>
@@ -229,52 +229,52 @@ export default async function PropertyDetailPage({ params }) {
   const schema = buildStructuredData(property, id, images);
 
   return (
-    <div className="min-h-screen bg-[#EFF6FF] text-[#1E3A5F]">
+    <div className="min-h-screen bg-[var(--pg-bg)] text-[var(--pg-text)]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
       <Navbar />
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <Link href="/propertys" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1D4ED8] hover:opacity-80 transition-opacity">
+      <main id="main-content" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <Link href="/propertys" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--pg-primary)] hover:opacity-80 transition-opacity">
           &larr; Back to Listings
         </Link>
         <div className="space-y-6">
-          <Reveal as="section" className="overflow-hidden rounded-3xl border border-[#bfdbfe] bg-white shadow-sm">
+          <Reveal as="section" className="overflow-hidden rounded-3xl border border-[var(--pg-border)] bg-white dark:bg-slate-800 shadow-sm">
             <div className="grid gap-0 lg:grid-cols-[1.4fr_0.8fr]">
               <Gallery images={images} name={property.name} />
 
               <div className="flex flex-col justify-between gap-6 p-6 sm:p-8">
                 <div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#1D4ED8]">
-                    {/* <span className="rounded-full bg-[#dbeafe] px-3 py-1">{property.status || "verified"}</span> */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest text-[var(--pg-primary)]">
+                    {/* <span className="rounded-full bg-[var(--pg-chip-bg)] px-3 py-1">{property.status || "verified"}</span> */}
                     {property.is_verified && <span className="rounded-full bg-green-50 px-3 py-1 text-green-700">Verified</span>}
                   </div>
                   <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">{property.name}</h1>
-                  <p className="mt-2 text-base text-[#1E3A5F80]">{property.tagline}</p>
+                  <p className="mt-2 text-base text-[var(--pg-text-secondary)]">{property.tagline}</p>
 
-                  <div className="mt-5 space-y-3 text-sm text-[#1E3A5F80]">
-                    <p><span className="font-semibold text-[#1E3A5F]">Location:</span> {property.address || "-"}, {property.city || "-"}</p>
-                    <p><span className="font-semibold text-[#1E3A5F]">Landmark:</span> {property.landmark || "-"}</p>
-                    <p><span className="font-semibold text-[#1E3A5F]">Manager:</span> {property.manager_name || "-"} {property.manager_phone ? `(${property.manager_phone})` : ""}</p>
+                  <div className="mt-5 space-y-3 text-sm text-[var(--pg-text-secondary)]">
+                    <p><span className="font-semibold text-[var(--pg-text)]">Location:</span> {property.address || "-"}, {property.city || "-"}</p>
+                    <p><span className="font-semibold text-[var(--pg-text)]">Landmark:</span> {property.landmark || "-"}</p>
+                    <p><span className="font-semibold text-[var(--pg-text)]">Manager:</span> {property.manager_name || "-"} {property.manager_phone ? `(${property.manager_phone})` : ""}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 rounded-2xl bg-[#EFF6FF] p-4">
+                <div className="grid grid-cols-2 gap-3 rounded-2xl bg-[var(--pg-bg)] p-4">
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-[#1E3A5F60]">Starting price</p>
-                    <p className="mt-1 text-xl font-bold text-[#1E3A5F]">{formatCurrency(property.starting_price)}</p>
+                    <p className="text-xs uppercase tracking-widest text-[var(--pg-text-tertiary)]">Starting price</p>
+                    <p className="mt-1 text-xl font-bold text-[var(--pg-text)]">{formatCurrency(property.starting_price)}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-[#1E3A5F60]">Beds available</p>
-                    <p className="mt-1 text-xl font-bold text-[#1E3A5F]">{property.available_beds ?? 0}</p>
+                    <p className="text-xs uppercase tracking-widest text-[var(--pg-text-tertiary)]">Beds available</p>
+                    <p className="mt-1 text-xl font-bold text-[var(--pg-text)]">{property.available_beds ?? 0}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-[#1E3A5F60]">Rating</p>
-                    <p className="mt-1 text-xl font-bold text-[#1E3A5F]">{property.rating || 0}</p>
+                    <p className="text-xs uppercase tracking-widest text-[var(--pg-text-tertiary)]">Rating</p>
+                    <p className="mt-1 text-xl font-bold text-[var(--pg-text)]">{property.rating || 0}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-[#1E3A5F60]">Views</p>
-                    <p className="mt-1 text-xl font-bold text-[#1E3A5F]">{property.views || 0}</p>
+                    <p className="text-xs uppercase tracking-widest text-[var(--pg-text-tertiary)]">Views</p>
+                    <p className="mt-1 text-xl font-bold text-[var(--pg-text)]">{property.views || 0}</p>
                   </div>
                 </div>
               </div>
@@ -282,13 +282,13 @@ export default async function PropertyDetailPage({ params }) {
           </Reveal>
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <Reveal direction="right" className="rounded-3xl border border-[#bfdbfe] bg-white p-6 shadow-sm">
+            <Reveal direction="right" className="rounded-3xl border border-[var(--pg-border)] bg-white dark:bg-slate-800 p-6 shadow-sm">
               <h2 className="text-xl font-bold">Amenities</h2>
               <div className="mt-4 flex flex-wrap gap-2">
                 {amenities.map((amenity) => {
                   const iconKey = getAmenityIconKey(amenity);
                   return (
-                    <span key={amenity} className="inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-[#EFF6FF] px-3 py-2 text-sm text-[#1E3A5F] transition-colors hover:border-[#1D4ED8]">
+                    <span key={amenity} className="inline-flex items-center gap-2 rounded-full border border-[var(--pg-border)] bg-[var(--pg-bg)] px-3 py-2 text-sm text-[var(--pg-text)] transition-colors hover:border-[var(--pg-primary)]">
                       {iconKey ? AMENITY_ICONS[iconKey] : null}
                       {amenity}
                     </span>
@@ -299,15 +299,15 @@ export default async function PropertyDetailPage({ params }) {
               <h2 className="mt-8 text-xl font-bold">Rooms</h2>
               <div className="mt-4 space-y-3">
                 {rooms.map((room) => (
-                  <div key={room.id || room.type} className="rounded-2xl border border-[#bfdbfe] p-4 transition-all hover:border-[#1D4ED8] hover:shadow-md">
+                  <div key={room.id || room.type} className="rounded-2xl border border-[var(--pg-border)] p-4 transition-all hover:border-[var(--pg-primary)] hover:shadow-md">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-[#1E3A5F]">{room.type}</p>
-                        <p className="mt-1 text-sm text-[#1E3A5F80]">{room.description || "No room description provided."}</p>
+                        <p className="font-semibold text-[var(--pg-text)]">{room.type}</p>
+                        <p className="mt-1 text-sm text-[var(--pg-text-secondary)]">{room.description || "No room description provided."}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-[#1E3A5F]">{formatCurrency(room.price)}</p>
-                        <p className="text-sm text-[#1E3A5F60]">{room.available_beds}/{room.total_beds} beds available</p>
+                        <p className="text-lg font-bold text-[var(--pg-text)]">{formatCurrency(room.price)}</p>
+                        <p className="text-sm text-[var(--pg-text-tertiary)]">{room.available_beds}/{room.total_beds} beds available</p>
                       </div>
                     </div>
                   </div>
@@ -319,31 +319,31 @@ export default async function PropertyDetailPage({ params }) {
               <BookingForm propertyId={id} rooms={rooms} />
               <InquiryForm propertyId={id} />
 
-              <div className="rounded-3xl border border-[#bfdbfe] bg-white p-6 shadow-sm">
+              <div className="rounded-3xl border border-[var(--pg-border)] bg-white dark:bg-slate-800 p-6 shadow-sm">
                 <h2 className="text-xl font-bold">Manager</h2>
-                <div className="mt-4 space-y-2 text-sm text-[#1E3A5F80]">
-                  <p className="font-semibold text-[#1E3A5F]">{property.manager_name || "-"}</p>
+                <div className="mt-4 space-y-2 text-sm text-[var(--pg-text-secondary)]">
+                  <p className="font-semibold text-[var(--pg-text)]">{property.manager_name || "-"}</p>
                   <p>{property.manager_phone || "-"}</p>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-[#bfdbfe] bg-white p-6 shadow-sm">
+              <div className="rounded-3xl border border-[var(--pg-border)] bg-white dark:bg-slate-800 p-6 shadow-sm">
                 <h2 className="text-xl font-bold">Property Stats</h2>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-2xl bg-[#EFF6FF] p-3">
-                    <p className="text-[#1E3A5F60]">Total beds</p>
+                  <div className="rounded-2xl bg-[var(--pg-bg)] p-3">
+                    <p className="text-[var(--pg-text-tertiary)]">Total beds</p>
                     <p className="mt-1 text-lg font-bold">{property.total_beds || 0}</p>
                   </div>
-                  <div className="rounded-2xl bg-[#EFF6FF] p-3">
-                    <p className="text-[#1E3A5F60]">Inquiries</p>
+                  <div className="rounded-2xl bg-[var(--pg-bg)] p-3">
+                    <p className="text-[var(--pg-text-tertiary)]">Inquiries</p>
                     <p className="mt-1 text-lg font-bold">{property.inquiries_count || 0}</p>
                   </div>
-                  <div className="rounded-2xl bg-[#EFF6FF] p-3">
-                    <p className="text-[#1E3A5F60]">Ratings</p>
+                  <div className="rounded-2xl bg-[var(--pg-bg)] p-3">
+                    <p className="text-[var(--pg-text-tertiary)]">Ratings</p>
                     <p className="mt-1 text-lg font-bold">{property.total_ratings || 0}</p>
                   </div>
-                  <div className="rounded-2xl bg-[#EFF6FF] p-3">
-                    <p className="text-[#1E3A5F60]">Gender</p>
+                  <div className="rounded-2xl bg-[var(--pg-bg)] p-3">
+                    <p className="text-[var(--pg-text-tertiary)]">Gender</p>
                     <p className="mt-1 text-lg font-bold">{property.gender || "-"}</p>
                   </div>
                 </div>
@@ -352,45 +352,45 @@ export default async function PropertyDetailPage({ params }) {
           </section>
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <Reveal direction="right" className="rounded-3xl border border-[#bfdbfe] bg-white p-6 shadow-sm">
+            <Reveal direction="right" className="rounded-3xl border border-[var(--pg-border)] bg-white dark:bg-slate-800 p-6 shadow-sm">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold">Reviews</h2>
                 {property.total_ratings > 0 && (
-                  <span className="flex items-center gap-1.5 text-sm font-bold text-[#1E3A5F]">
-                    <span style={{ color: "#F97316" }}>★</span> {property.rating} <span className="font-normal text-[#1E3A5F60]">({property.total_ratings})</span>
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-[var(--pg-text)]">
+                    <span style={{ color: "var(--pg-accent)" }}>★</span> {property.rating} <span className="font-normal text-[var(--pg-text-tertiary)]">({property.total_ratings})</span>
                   </span>
                 )}
               </div>
 
               {reviews.length === 0 ? (
-                <p className="mt-4 text-sm text-[#1E3A5F80]">No reviews yet. Be the first to share your experience.</p>
+                <p className="mt-4 text-sm text-[var(--pg-text-secondary)]">No reviews yet. Be the first to share your experience.</p>
               ) : (
                 <div className="mt-4 space-y-4">
                   {reviews.map((r) => (
-                    <div key={r.id} className="rounded-2xl border border-[#bfdbfe] p-4">
+                    <div key={r.id} className="rounded-2xl border border-[var(--pg-border)] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-[#1E3A5F]">
+                          <p className="font-semibold text-[var(--pg-text)]">
                             {r.tenant?.first_name || "Anonymous"} {r.tenant?.last_name?.[0] ? `${r.tenant.last_name[0]}.` : ""}
                           </p>
                           <div className="mt-0.5 flex items-center gap-1">
                             {[1, 2, 3, 4, 5].map((s) => (
-                              <span key={s} style={{ color: s <= r.rating ? "#F97316" : "#e2e8f0" }}>★</span>
+                              <span key={s} style={{ color: s <= r.rating ? "var(--pg-accent)" : "#e2e8f0" }}>★</span>
                             ))}
                             {r.is_verified_stay && (
                               <span className="ml-2 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-700">Verified Stay</span>
                             )}
                           </div>
                         </div>
-                        <span className="shrink-0 text-xs text-[#1E3A5F60]">
+                        <span className="shrink-0 text-xs text-[var(--pg-text-tertiary)]">
                           {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </span>
                       </div>
-                      {r.comment && <p className="mt-2 text-sm text-[#1E3A5F80]">{r.comment}</p>}
+                      {r.comment && <p className="mt-2 text-sm text-[var(--pg-text-secondary)]">{r.comment}</p>}
                     </div>
                   ))}
                   {reviewsTotal > reviews.length && (
-                    <p className="text-xs text-[#1E3A5F60]">Showing {reviews.length} of {reviewsTotal} reviews</p>
+                    <p className="text-xs text-[var(--pg-text-tertiary)]">Showing {reviews.length} of {reviewsTotal} reviews</p>
                   )}
                 </div>
               )}

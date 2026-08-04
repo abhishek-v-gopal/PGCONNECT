@@ -4,11 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useDismissableOverlay } from "../../lib/useDismissableOverlay";
 import {
-  getReferralCode,
-  getReferralStats,
-  getReferralCommissions,
-  updateCommissionType,
-  requestPayout,
+  getAgentCode,
+  getAgentStats,
+  getAgentCommissions,
+  requestAgentPayout,
 } from "../api";
 
 const statusStyles = {
@@ -22,6 +21,12 @@ const propStatusStyles = {
   pending: "bg-amber-50 text-amber-700 border border-amber-200",
   in_review: "bg-blue-50 text-blue-600 border border-blue-200",
   rejected: "bg-red-50 text-red-600 border border-red-200",
+  unlisted: "bg-slate-100 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700",
+};
+
+const typeLabels = {
+  bounty: "One-time bounty",
+  recurring: "Recurring",
 };
 
 const iconProps = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" };
@@ -32,40 +37,39 @@ const LinkIcon = ({ className }) => <svg className={className} {...iconProps}><p
 const CheckCircleIcon = ({ className }) => <svg className={className} {...iconProps}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
 const ClockIcon = ({ className }) => <svg className={className} {...iconProps}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
 
-export default function ReferrerDashboard() {
+export default function AgentDashboard() {
   const router = useRouter();
   const [activeNav, setActiveNav] = useState("Overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useDismissableOverlay(sidebarOpen, () => setSidebarOpen(false));
 
-  const [referralCode, setReferralCode] = useState("");
-  const [referralUrl, setReferralUrl] = useState("");
+  const [agentCode, setAgentCode] = useState("");
+  const [connectUrl, setConnectUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
   const [stats, setStats] = useState(null);
-  const [referredProps, setReferredProps] = useState([]);
+  const [connectedProps, setConnectedProps] = useState([]);
   const [statsLoading, setStatsLoading] = useState(true);
 
   const [commissions, setCommissions] = useState([]);
   const [commissionsLoading, setCommissionsLoading] = useState(false);
 
   const [payoutLoading, setPayoutLoading] = useState(false);
-  const [commTypeLoading, setCommTypeLoading] = useState(false);
 
   const loadStats = useCallback(async () => {
     try {
       setStatsLoading(true);
-      const [codeRes, statsRes] = await Promise.all([getReferralCode(), getReferralStats()]);
+      const [codeRes, statsRes] = await Promise.all([getAgentCode(), getAgentStats()]);
       if (codeRes.success) {
-        setReferralCode(codeRes.referral_code);
-        setReferralUrl(codeRes.referral_url);
+        setAgentCode(codeRes.agent_code);
+        setConnectUrl(codeRes.connect_url);
       }
       if (statsRes.success) {
         setStats(statsRes.stats);
-        setReferredProps(statsRes.referred_properties ?? []);
+        setConnectedProps(statsRes.connected_properties ?? []);
       }
     } catch (e) {
-      console.error("Failed to load referral data:", e);
+      console.error("Failed to load agent data:", e);
     } finally {
       setStatsLoading(false);
     }
@@ -74,7 +78,7 @@ export default function ReferrerDashboard() {
   const loadCommissions = useCallback(async () => {
     try {
       setCommissionsLoading(true);
-      const res = await getReferralCommissions();
+      const res = await getAgentCommissions();
       if (res.success) setCommissions(res.commissions ?? []);
     } catch (e) { console.error(e); }
     finally { setCommissionsLoading(false); }
@@ -89,7 +93,7 @@ export default function ReferrerDashboard() {
   }, [activeNav, loadCommissions]);
 
   const copyCode = () => {
-    navigator.clipboard.writeText(referralUrl || referralCode);
+    navigator.clipboard.writeText(connectUrl || agentCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -97,36 +101,29 @@ export default function ReferrerDashboard() {
   const handleRequestPayout = async () => {
     try {
       setPayoutLoading(true);
-      const res = await requestPayout();
+      const res = await requestAgentPayout();
       alert(res.message);
       await loadStats();
     } catch (e) { alert(e.message); }
     finally { setPayoutLoading(false); }
   };
 
-  const handleCommissionTypeChange = async (type) => {
-    try {
-      setCommTypeLoading(true);
-      await updateCommissionType(type);
-      setStats((s) => s ? { ...s, commission_type: type } : s);
-    } catch (e) { alert(e.message); }
-    finally { setCommTypeLoading(false); }
-  };
-
   const formatCurrency = (n) => `₹${Number(n ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
   const formatDate = (v) => v ? new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
+  const isVerified = stats?.is_verified_agent ?? false;
+
   const navItems = [
     { label: "Overview", Icon: BarChartIcon },
-    { label: "Referred PGs", Icon: HouseIcon },
+    { label: "Connected PGs", Icon: HouseIcon },
     { label: "Commissions", Icon: WalletIcon },
-    { label: "Referral Link", Icon: LinkIcon },
+    { label: "Agent Code", Icon: LinkIcon },
   ];
 
   return (
     <>
       <Head>
-        <title>Referrer Dashboard — PG Connect</title>
+        <title>Agent Dashboard — PG Connect</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
         <style>{`body { font-family: 'DM Sans', sans-serif; overflow-x: hidden; } .font-serif-display { font-family: 'DM Serif Display', serif; }`}</style>
@@ -148,10 +145,10 @@ export default function ReferrerDashboard() {
           <div className="flex-1" />
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-tight">Referrer Portal</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">Student</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-tight">Agent Portal</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">{isVerified ? "Verified Agent" : "Pending Approval"}</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">ST</div>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">AG</div>
           </div>
         </header>
 
@@ -166,10 +163,10 @@ export default function ReferrerDashboard() {
             lg:!sticky lg:top-14 lg:h-[calc(100vh-56px)] lg:self-start lg:z-30
           `}>
             <div className="hidden lg:block px-5 pt-6 pb-4">
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-semibold">Referrer Dashboard</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-semibold">Agent Dashboard</p>
             </div>
             <div className="lg:hidden flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <p className="font-bold text-blue-600 text-sm">Referrer Dashboard</p>
+              <p className="font-bold text-blue-600 text-sm">Agent Dashboard</p>
               <button onClick={() => setSidebarOpen(false)} aria-label="Close menu" className="p-3 text-slate-500 dark:text-slate-400">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -197,21 +194,31 @@ export default function ReferrerDashboard() {
           {/* MAIN */}
           <main id="main-content" className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 min-w-0">
 
+            {!statsLoading && !isVerified && (
+              <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                <span className="text-xl leading-none">⏳</span>
+                <div>
+                  <p className="text-sm font-bold text-amber-800">Your agent account is pending admin approval</p>
+                  <p className="text-xs text-amber-700 mt-0.5">Your code is visible below, but it won't connect any properties until PG Connect approves your account.</p>
+                </div>
+              </div>
+            )}
+
             {/* OVERVIEW */}
             {activeNav === "Overview" && (
               <>
                 <div className="mb-7">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Referrer Overview</h1>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Track your referred PGs and commission earnings.</p>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Agent Overview</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Track the PGs connected to your code and your commission earnings.</p>
                 </div>
 
                 {/* Stat cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                   {[
-                    { label: "PGs Referred", value: statsLoading ? "—" : stats?.total_referred ?? 0, color: "blue", Icon: HouseIcon },
-                    { label: "Active Bookings", value: statsLoading ? "—" : stats?.active_bookings ?? 0, color: "green", Icon: CheckCircleIcon },
-                    { label: "Total Earned", value: statsLoading ? "—" : formatCurrency(stats?.total_commission_earned), color: "amber", Icon: WalletIcon },
-                    { label: "Pending Balance", value: statsLoading ? "—" : formatCurrency(stats?.pending_balance), color: "purple", Icon: ClockIcon },
+                    { label: "Connected PGs", value: statsLoading ? "—" : stats?.total_connected ?? 0, Icon: HouseIcon },
+                    { label: "Verified PGs", value: statsLoading ? "—" : stats?.verified_properties ?? 0, Icon: CheckCircleIcon },
+                    { label: "Total Earned", value: statsLoading ? "—" : formatCurrency(stats?.total_commission_earned), Icon: WalletIcon },
+                    { label: "Pending Balance", value: statsLoading ? "—" : formatCurrency(stats?.pending_balance), Icon: ClockIcon },
                   ].map((card) => (
                     <div key={card.label} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 hover:shadow-sm transition-shadow">
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3 bg-blue-50 text-blue-600"><card.Icon className="w-5 h-5" /></div>
@@ -221,32 +228,19 @@ export default function ReferrerDashboard() {
                   ))}
                 </div>
 
-                {/* Commission type selector */}
+                {/* How you earn */}
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 mb-6">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">Commission Type</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">Choose how you want to earn from your referred PGs.</p>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">How You Earn</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">Two ways commission lands in your balance.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      { type: "recurring", label: "Recurring Commission", desc: "Earn 2% of every booking payment from your referred PGs — monthly, ongoing income." },
-                      { type: "one-time", label: "One-Time Payment", desc: "Earn a single flat payment after the first successful booking from each referred PG." },
-                    ].map((opt) => (
-                      <button key={opt.type}
-                        onClick={() => handleCommissionTypeChange(opt.type)}
-                        disabled={commTypeLoading || stats?.commission_type === opt.type}
-                        className={`text-left p-4 rounded-xl border-2 transition-all cursor-pointer disabled:cursor-not-allowed
-                          ${stats?.commission_type === opt.type
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-blue-50/50"
-                          }`}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${stats?.commission_type === opt.type ? "border-blue-500 bg-blue-500" : "border-slate-300"}`}>
-                            {stats?.commission_type === opt.type && <div className="w-1.5 h-1.5 bg-white dark:bg-slate-800 rounded-full" />}
-                          </div>
-                          <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{opt.label}</p>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed ml-6">{opt.desc}</p>
-                      </button>
-                    ))}
+                    <div className="p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700">
+                      <p className="text-sm font-bold text-slate-900 dark:text-slate-100">One-Time Bounty</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">A flat payout the moment a PG connected to your code gets verified by PG Connect.</p>
+                    </div>
+                    <div className="p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700">
+                      <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Recurring Commission</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">An ongoing cut of every rent payment made at your connected PGs, for as long as they stay active.</p>
+                    </div>
                   </div>
                 </div>
 
@@ -268,24 +262,24 @@ export default function ReferrerDashboard() {
               </>
             )}
 
-            {/* REFERRED PGS */}
-            {activeNav === "Referred PGs" && (
+            {/* CONNECTED PGS */}
+            {activeNav === "Connected PGs" && (
               <>
                 <div className="mb-7">
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Referred PGs</h1>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{referredProps.length} total PGs referred by you.</p>
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Connected PGs</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{connectedProps.length} total PGs connected to your code. This is a view-only list.</p>
                 </div>
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
                   {statsLoading ? (
                     <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">Loading...</div>
-                  ) : referredProps.length === 0 ? (
+                  ) : connectedProps.length === 0 ? (
                     <div className="px-6 py-12 text-center">
                       <p className="text-3xl mb-3">🏠</p>
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No PGs referred yet</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Share your referral link with PG owners to get started.</p>
-                      <button onClick={() => setActiveNav("Referral Link")}
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No PGs connected yet</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Share your agent code with PG owners to get started.</p>
+                      <button onClick={() => setActiveNav("Agent Code")}
                         className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer">
-                        Get Your Referral Link →
+                        Get Your Agent Code →
                       </button>
                     </div>
                   ) : (
@@ -299,7 +293,7 @@ export default function ReferrerDashboard() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                          {referredProps.map((p) => (
+                          {connectedProps.map((p) => (
                             <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/60 transition-colors">
                               <td className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{p.name}</td>
                               <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{p.city || "—"}</td>
@@ -329,7 +323,7 @@ export default function ReferrerDashboard() {
               <>
                 <div className="mb-7">
                   <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Commission History</h1>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">All commission transactions from your referred PGs.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Bounties and recurring commission from your connected PGs.</p>
                 </div>
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
                   {commissionsLoading ? (
@@ -338,7 +332,7 @@ export default function ReferrerDashboard() {
                     <div className="px-6 py-12 text-center">
                       <p className="text-3xl mb-3">💰</p>
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No commissions yet</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Commissions are credited when rent is paid through the platform.</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Bounties post when a connected PG is verified; recurring commission posts when rent is paid.</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -360,7 +354,7 @@ export default function ReferrerDashboard() {
                               <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-slate-100">{formatCurrency(c.amount)}</td>
                               <td className="px-6 py-4">
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:text-slate-400">
-                                  {c.type}
+                                  {typeLabels[c.type] || c.type}
                                 </span>
                               </td>
                               <td className="px-6 py-4">
@@ -379,20 +373,20 @@ export default function ReferrerDashboard() {
               </>
             )}
 
-            {/* REFERRAL LINK */}
-            {activeNav === "Referral Link" && (
+            {/* AGENT CODE */}
+            {activeNav === "Agent Code" && (
               <>
                 <div className="mb-7">
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Your Referral Link</h1>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Share this link with PG owners. When they list their property using your link, you earn commission.</p>
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Your Agent Code</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Give this code to PG owners. When they enter it while listing their property, it connects to you.</p>
                 </div>
 
                 {/* Code display */}
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 mb-6">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Your Referral Code</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Your Agent Code</p>
                   <div className="flex items-center gap-3 mb-6">
                     <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
-                      <p className="text-2xl font-bold text-blue-600 tracking-[0.3em] font-mono">{referralCode || "Loading..."}</p>
+                      <p className="text-2xl font-bold text-blue-600 tracking-[0.3em] font-mono">{agentCode || "Loading..."}</p>
                     </div>
                     <button onClick={copyCode} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-3 rounded-xl transition-all cursor-pointer shrink-0">
                       {copied ? "Copied!" : "Copy Code"}
@@ -402,7 +396,7 @@ export default function ReferrerDashboard() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Shareable Link</p>
                   <div className="flex items-center gap-3">
                     <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 overflow-hidden">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 truncate font-mono">{referralUrl || "Loading..."}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 truncate font-mono">{connectUrl || "Loading..."}</p>
                     </div>
                     <button onClick={copyCode} className="border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:bg-blue-50 text-slate-700 dark:text-slate-300 font-semibold text-sm px-4 py-3 rounded-xl transition-all cursor-pointer shrink-0">
                       {copied ? "Copied!" : "Copy Link"}
@@ -412,13 +406,13 @@ export default function ReferrerDashboard() {
 
                 {/* How it works */}
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-5">How the Referral Works</h3>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-5">How Connecting Works</h3>
                   <div className="space-y-5">
                     {[
-                      { n: 1, title: "Share your link", desc: "Send your unique referral link or code to a PG owner in your area." },
-                      { n: 2, title: "Owner lists their PG", desc: "The owner clicks your link and lists their property on PG Connect. Your code is automatically linked." },
-                      { n: 3, title: "Tenant books and pays", desc: "A student books the PG and pays rent through the platform." },
-                      { n: 4, title: "You earn 2%", desc: "PG Connect credits 2% of every rent payment to your balance — monthly and recurring." },
+                      { n: 1, title: "Share your code", desc: "Send your unique agent code or link to a PG owner you've onboarded." },
+                      { n: 2, title: "Owner lists their PG", desc: "The owner enters your code while listing their property. It's now connected to you." },
+                      { n: 3, title: "Admin verifies the PG", desc: "PG Connect reviews and verifies the listing — you earn a one-time bounty the moment it goes live." },
+                      { n: 4, title: "Tenants book and pay", desc: "Every rent payment made at that PG earns you an ongoing recurring commission." },
                     ].map((step) => (
                       <div key={step.n} className="flex items-start gap-4">
                         <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step.n}</div>

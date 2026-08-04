@@ -41,8 +41,8 @@ function AccordionItem({ q, a }) {
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-4 py-4 text-left cursor-pointer"
       >
-        <span className="text-sm font-semibold" style={{ color: "#1E3A5F" }}>{q}</span>
-        <motion.svg animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#1D4ED8" }}>
+        <span className="text-sm font-semibold" style={{ color: "var(--pg-text)" }}>{q}</span>
+        <motion.svg animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--pg-primary)" }}>
           <polyline points="6 9 12 15 18 9" />
         </motion.svg>
       </button>
@@ -55,7 +55,7 @@ function AccordionItem({ q, a }) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <p className="pb-4 text-sm leading-relaxed" style={{ color: "#1E3A5F80" }}>{a}</p>
+            <p className="pb-4 text-sm leading-relaxed" style={{ color: "var(--pg-text-secondary)" }}>{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -65,18 +65,18 @@ function AccordionItem({ q, a }) {
 
 export default function HelpCenterPage() {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#EFF6FF", color: "#1E3A5F" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--pg-bg)", color: "var(--pg-text)" }}>
       <Navbar />
-      <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16 w-full">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: "#1E3A5F" }}>Help Center</h1>
-        <p className="mt-2 text-sm max-w-lg" style={{ color: "#1E3A5F80" }}>
-          Answers to common questions. Can't find what you're looking for? <a href="/contact" className="font-semibold" style={{ color: "#1D4ED8" }}>Contact us</a>.
+      <main id="main-content" className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16 w-full">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: "var(--pg-text)" }}>Help Center</h1>
+        <p className="mt-2 text-sm max-w-lg" style={{ color: "var(--pg-text-secondary)" }}>
+          Answers to common questions. Can't find what you're looking for? <a href="/contact" className="font-semibold" style={{ color: "var(--pg-primary)" }}>Contact us</a>.
         </p>
 
         <div className="mt-10 space-y-8">
           {FAQ_GROUPS.map((group) => (
-            <div key={group.group} className="bg-white rounded-2xl border p-6 sm:p-8 shadow-sm" style={{ borderColor: "#e0f2fe" }}>
-              <h2 className="text-lg font-bold mb-2" style={{ color: "#1D4ED8" }}>{group.group}</h2>
+            <div key={group.group} className="bg-white dark:bg-slate-800 rounded-2xl border p-6 sm:p-8 shadow-sm" style={{ borderColor: "var(--pg-border-soft)" }}>
+              <h2 className="text-lg font-bold mb-2" style={{ color: "var(--pg-primary)" }}>{group.group}</h2>
               <div>
                 {group.items.map((item) => (
                   <AccordionItem key={item.q} q={item.q} a={item.a} />

@@ -2,12 +2,14 @@
 import Head from "next/head";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useDismissableOverlay } from "../../lib/useDismissableOverlay";
 import {
   getAdminStats,
   getVerificationQueue,
   verifyProperty,
   getAdminUsers,
   toggleUser,
+  verifyAgent,
   getAdminReviews,
   moderateReview,
   getAdminProperties,
@@ -27,14 +29,20 @@ const NAV_ITEMS = [
   { label: "Dashboard", icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> },
   { label: "Properties", icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
   { label: "Users", icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+  { label: "Agents", icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg> },
   { label: "Verification", icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
   { label: "Reviews", icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
   { label: "Settings", icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
 ];
 
+const iconProps = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" };
+const PeopleIcon = ({ className }) => <svg className={className} {...iconProps}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+const WarningIcon = ({ className }) => <svg className={className} {...iconProps}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+const HouseIcon = ({ className }) => <svg className={className} {...iconProps}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+
 function StatusBadge({ status }) {
   const styles = {
-    pending: { background: "#fff7ed", color: "#F97316", border: "1px solid #fed7aa" },
+    pending: { background: "#fff7ed", color: "var(--pg-accent)", border: "1px solid #fed7aa" },
     verified: { background: "#dcfce7", color: "#15803d", border: "1px solid #bbf7d0" },
     unlisted: { background: "#f1f5f9", color: "#64748b", border: "1px solid #e2e8f0" },
   };
@@ -51,6 +59,7 @@ export default function AdminPanel() {
   const router = useRouter();
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useDismissableOverlay(sidebarOpen, () => setSidebarOpen(false));
   const [notifOpen, setNotifOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -65,6 +74,11 @@ export default function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersTotal, setUsersTotal] = useState(0);
+
+  const [agents, setAgents] = useState([]);
+  const [agentsLoading, setAgentsLoading] = useState(false);
+  const [agentsTotal, setAgentsTotal] = useState(0);
+  const [agentActioningId, setAgentActioningId] = useState(null);
 
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -123,6 +137,15 @@ export default function AdminPanel() {
     finally { setUsersLoading(false); }
   };
 
+  const loadAgents = async () => {
+    try {
+      setAgentsLoading(true);
+      const a = await getAdminUsers({ role: "agent" });
+      if (a.success) { setAgents(a.users); setAgentsTotal(a.total); }
+    } catch (e) { console.error("Agents error:", e); }
+    finally { setAgentsLoading(false); }
+  };
+
   const loadReviews = async () => {
     try {
       setReviewsLoading(true);
@@ -173,6 +196,7 @@ export default function AdminPanel() {
 
   useEffect(() => {
     if (activeNav === "Users") loadUsers();
+    if (activeNav === "Agents") loadAgents();
     if (activeNav === "Reviews") loadReviews();
     if (activeNav === "Properties") loadAllProperties();
     if (activeNav === "Verification") loadVerificationQueue();
@@ -220,6 +244,20 @@ export default function AdminPanel() {
         setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, is_active: !u.is_active } : u));
       }
     } catch (e) { alert(`Failed: ${e.message}`); }
+  };
+
+  const handleVerifyAgent = async (agentId, action) => {
+    try {
+      setAgentActioningId(agentId);
+      const res = await verifyAgent(agentId, action);
+      if (res.success) {
+        setAgents((prev) => prev.map((a) => a.id === agentId ? { ...a, is_verified_agent: action === "verify" } : a));
+      }
+    } catch (e) {
+      alert(`Failed: ${e.message}`);
+    } finally {
+      setAgentActioningId(null);
+    }
   };
 
   const handleModerateReview = async (reviewId, action) => {
@@ -308,28 +346,28 @@ export default function AdminPanel() {
         `}</style>
       </Head>
 
-      <div className="min-h-screen flex flex-col" style={{ background: "#EFF6FF", color: "#1E3A5F" }}>
+      <div className="min-h-screen flex flex-col" style={{ background: "var(--pg-bg)", color: "var(--pg-text)" }}>
 
         {/* TOP HEADER */}
-        <header className="sticky top-0 z-50 bg-white border-b border-blue-100 shadow-sm h-14 flex items-center px-4 sm:px-5 gap-3">
-          <button className="lg:hidden p-1.5 rounded-lg" style={{ color: "#1E3A5F60" }} onClick={() => setSidebarOpen(true)}>
+        <header className="sticky top-0 z-50 bg-white dark:bg-slate-800 border-b border-blue-100 shadow-sm h-14 flex items-center px-4 sm:px-5 gap-3">
+          <button className="lg:hidden p-3 rounded-lg" aria-label="Open menu" style={{ color: "var(--pg-text-tertiary)" }} onClick={() => setSidebarOpen(true)}>
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
             </svg>
           </button>
           <div className="lg:hidden">
-            <p className="font-bold text-sm" style={{ color: "#1D4ED8" }}>PG Connect Admin</p>
+            <p className="font-bold text-sm" style={{ color: "var(--pg-primary)" }}>PG Connect Admin</p>
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-3">
-            <button onClick={() => setNotifOpen(!notifOpen)} className="relative p-2 rounded-lg cursor-pointer" style={{ color: "#1E3A5F60" }}>
+            <button onClick={() => setNotifOpen(!notifOpen)} className="relative p-2 rounded-lg cursor-pointer" style={{ color: "var(--pg-text-tertiary)" }}>
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
               {(queueTotal > 0 || reviewsTotal > 0) && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"/>}
             </button>
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-bold leading-tight" style={{ color: "#1D4ED8" }}>
+              <p className="text-sm font-bold leading-tight" style={{ color: "var(--pg-primary)" }}>
                 {settingsUser ? `${settingsUser.first_name} ${settingsUser.last_name}` : "PG Connect Admin"}
               </p>
             </div>
@@ -337,20 +375,20 @@ export default function AdminPanel() {
               <button
                 onClick={() => setUserMenuOpen((v) => !v)}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 cursor-pointer"
-                style={{ background: "#1D4ED8" }}
+                style={{ background: "var(--pg-primary)" }}
               >
                 {settingsUser ? `${settingsUser.first_name?.[0] || ""}${settingsUser.last_name?.[0] || ""}`.toUpperCase() || "AD" : "AD"}
               </button>
               {userMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-blue-100 py-1.5 z-50">
-                    <p className="px-3.5 py-2 text-xs text-[#1E3A5F80] truncate border-b border-blue-50">
+                  <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-blue-100 py-1.5 z-50">
+                    <p className="px-3.5 py-2 text-xs text-[var(--pg-text-secondary)] truncate border-b border-blue-50">
                       {settingsUser?.email || "Loading..."}
                     </p>
                     <button
                       onClick={() => { setActiveNav("Settings"); setUserMenuOpen(false); }}
-                      className="w-full text-left px-3.5 py-2 text-sm text-[#1E3A5F] hover:bg-blue-50 cursor-pointer"
+                      className="w-full text-left px-3.5 py-2 text-sm text-[var(--pg-text)] hover:bg-blue-50 cursor-pointer"
                     >
                       Account Settings
                     </button>
@@ -371,21 +409,21 @@ export default function AdminPanel() {
           {sidebarOpen && <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setSidebarOpen(false)} />}
 
           {/* SIDEBAR */}
-          <aside className={`
+          <aside ref={sidebarRef} className={`
             fixed lg:sticky top-0 lg:top-14 z-50 lg:z-auto
             h-screen lg:h-[calc(100vh-56px)]
-            w-56 bg-white border-r border-blue-100
+            w-56 bg-white dark:bg-slate-800 border-r border-blue-100
             flex flex-col sidebar-scroll overflow-y-auto
             transition-transform duration-250
             ${sidebarOpen ? "translate-x-0 slide-in" : "-translate-x-full lg:translate-x-0"}
           `}>
             <div className="hidden lg:block px-5 pt-5 pb-4 border-b border-blue-50">
-              <p className="font-bold text-sm" style={{ color: "#1D4ED8" }}>PG Connect</p>
-              <p className="text-[9px] uppercase tracking-widest font-semibold mt-0.5" style={{ color: "#1E3A5F60" }}>Admin Portal</p>
+              <p className="font-bold text-sm" style={{ color: "var(--pg-primary)" }}>PG Connect</p>
+              <p className="text-[9px] uppercase tracking-widest font-semibold mt-0.5" style={{ color: "var(--pg-text-tertiary)" }}>Admin Portal</p>
             </div>
             <div className="lg:hidden flex items-center justify-between px-5 pt-5 pb-4 border-b border-blue-50">
-              <p className="font-bold text-sm" style={{ color: "#1D4ED8" }}>PG Connect Admin</p>
-              <button onClick={() => setSidebarOpen(false)} className="p-1 cursor-pointer" style={{ color: "#1E3A5F60" }}>
+              <p className="font-bold text-sm" style={{ color: "var(--pg-primary)" }}>PG Connect Admin</p>
+              <button onClick={() => setSidebarOpen(false)} aria-label="Close menu" className="p-3 cursor-pointer" style={{ color: "var(--pg-text-tertiary)" }}>
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
@@ -396,8 +434,8 @@ export default function AdminPanel() {
                 <button key={item.label}
                   onClick={() => { setActiveNav(item.label); setSidebarOpen(false); }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer text-left"
-                  style={activeNav === item.label ? { background: "#dbeafe", color: "#1D4ED8" } : { color: "#1E3A5F80" }}>
-                  <span style={activeNav === item.label ? { color: "#1D4ED8" } : { color: "#1E3A5F60" }}>{item.icon}</span>
+                  style={activeNav === item.label ? { background: "var(--pg-chip-bg)", color: "var(--pg-primary)" } : { color: "var(--pg-text-secondary)" }}>
+                  <span style={activeNav === item.label ? { color: "var(--pg-primary)" } : { color: "var(--pg-text-tertiary)" }}>{item.icon}</span>
                   {item.label}
                   {item.label === "Verification" && queueTotal > 0 && (
                     <span className="ml-auto text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full">{queueTotal}</span>
@@ -411,17 +449,17 @@ export default function AdminPanel() {
           </aside>
 
           {/* MAIN */}
-          <main className="flex-1 overflow-y-auto min-w-0">
+          <main id="main-content" className="flex-1 overflow-y-auto min-w-0">
             <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-[1200px]">
 
               {/* Page title */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-7">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: "#1E3A5F" }}>Platform Overview</h1>
-                  <p className="text-sm mt-1" style={{ color: "#1E3A5F80" }}>Real-time metrics for PG Connect.</p>
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: "var(--pg-text)" }}>Platform Overview</h1>
+                  <p className="text-sm mt-1" style={{ color: "var(--pg-text-secondary)" }}>Real-time metrics for PG Connect.</p>
                 </div>
                 <button onClick={handleRefresh}
-                  className="flex items-center gap-2 active:scale-[0.98] text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer shrink-0" style={{ background: "#1D4ED8" }}>
+                  className="flex items-center gap-2 active:scale-[0.98] text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer shrink-0" style={{ background: "var(--pg-primary)" }}>
                   <svg className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
                   </svg>
@@ -434,18 +472,20 @@ export default function AdminPanel() {
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-7">
                     {[
-                      { label: "Platform Revenue", value: formatCurrency(stats?.totalRevenue), badge: null, icon: "₹", color: "blue" },
-                      { label: "Total Active Users", value: statsLoading ? "—" : stats?.totalUsers ?? 0, badge: `${stats?.studentCount ?? 0}S / ${stats?.ownerCount ?? 0}O`, icon: "👤", color: "green" },
-                      { label: "Pending Verifications", value: statsLoading ? "—" : stats?.pendingVerifications ?? 0, badge: "Urgent", icon: "⚠", color: "red" },
-                      { label: "Active Listings", value: statsLoading ? "—" : stats?.activeListings ?? 0, badge: null, icon: "🏠", color: "slate" },
+                      { label: "Platform Revenue", value: formatCurrency(stats?.totalRevenue), badge: null, iconChar: "₹", color: "blue" },
+                      { label: "Total Active Users", value: statsLoading ? "—" : stats?.totalUsers ?? 0, badge: `${stats?.studentCount ?? 0}S / ${stats?.ownerCount ?? 0}O / ${stats?.agentCount ?? 0}A`, Icon: PeopleIcon, color: "green" },
+                      { label: "Pending Verifications", value: statsLoading ? "—" : stats?.pendingVerifications ?? 0, badge: "Urgent", Icon: WarningIcon, color: "red" },
+                      { label: "Active Listings", value: statsLoading ? "—" : stats?.activeListings ?? 0, badge: null, Icon: HouseIcon, color: "slate" },
                     ].map((card, i) => (
-                      <div key={i} className="bg-white rounded-2xl p-4 sm:p-5 hover:shadow-sm transition-shadow border" style={{ borderColor: "#e0f2fe" }}>
+                      <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-5 hover:shadow-sm transition-shadow border" style={{ borderColor: "var(--pg-border-soft)" }}>
                         <div className="flex items-start justify-between mb-3">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: "#EFF6FF" }}>{card.icon}</div>
-                          {card.badge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={card.color === 'red' ? { background: "#F97316", color: "white" } : { background: "#dcfce7", color: "#15803d", border: "1px solid #bbf7d0" }}>{card.badge}</span>}
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold" style={{ background: "var(--pg-bg)", color: "var(--pg-primary)" }}>
+                            {card.iconChar || <card.Icon className="w-5 h-5" />}
+                          </div>
+                          {card.badge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={card.color === 'red' ? { background: "var(--pg-accent)", color: "white" } : { background: "#dcfce7", color: "#15803d", border: "1px solid #bbf7d0" }}>{card.badge}</span>}
                         </div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "#1E3A5F80" }}>{card.label}</p>
-                        <p className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: "#1E3A5F" }}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--pg-text-secondary)" }}>{card.label}</p>
+                        <p className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: "var(--pg-text)" }}>
                           {statsLoading ? "—" : card.value}
                         </p>
                       </div>
@@ -453,16 +493,16 @@ export default function AdminPanel() {
                   </div>
 
                   {/* Verification Queue */}
-                  <div className="bg-white rounded-2xl overflow-hidden mb-6 border" style={{ borderColor: "#e0f2fe" }}>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden mb-6 border" style={{ borderColor: "var(--pg-border-soft)" }}>
                     <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
-                      <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Property Verification Queue</h2>
-                      <p className="text-xs mt-0.5" style={{ color: "#1E3A5F80" }}>Review newly submitted properties.</p>
+                      <h2 className="text-base font-bold" style={{ color: "var(--pg-text)" }}>Property Verification Queue</h2>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--pg-text-secondary)" }}>Review newly submitted properties.</p>
                     </div>
 
                     {queueLoading ? (
-                      <div className="px-6 py-8 text-sm text-slate-400">Loading queue...</div>
+                      <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">Loading queue...</div>
                     ) : queue.length === 0 ? (
-                      <div className="px-6 py-8 text-sm text-slate-400 flex items-center gap-2">
+                      <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                         <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                         All caught up! No pending verifications.
                       </div>
@@ -470,30 +510,30 @@ export default function AdminPanel() {
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead>
-                            <tr className="border-b border-slate-100">
+                            <tr className="border-b border-slate-100 dark:border-slate-800">
                               {["Property", "Owner", "City", "Submitted", "Status", "Action"].map((h) => (
-                                <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-5 py-3">{h}</th>
+                                <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 px-5 py-3">{h}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-50">
                             {queue.map((p) => (
-                              <tr key={p.id} className="hover:bg-[#EFF6FF]/60 transition-colors">
+                              <tr key={p.id} className="hover:bg-[var(--pg-bg)]/60 transition-colors">
                                 <td className="px-5 py-3.5">
                                   <div className="flex items-center gap-3">
                                     {p.property_images?.[0]?.image_url && (
-                                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#EFF6FF] shrink-0">
+                                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-[var(--pg-bg)] shrink-0">
                                         <img src={p.property_images[0].image_url} alt={p.name} className="w-full h-full object-cover"/>
                                       </div>
                                     )}
-                                    <span className="text-sm font-semibold text-[#1E3A5F]">{p.name}</span>
+                                    <span className="text-sm font-semibold text-[var(--pg-text)]">{p.name}</span>
                                   </div>
                                 </td>
-                                <td className="px-5 py-3.5 text-sm text-slate-600">
+                                <td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-400">
                                   {p.owner?.first_name} {p.owner?.last_name}
                                 </td>
-                                <td className="px-5 py-3.5 text-sm text-slate-500">{p.city}</td>
-                                <td className="px-5 py-3.5 text-sm text-slate-500">
+                                <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">{p.city}</td>
+                                <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">
                                   {new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                                 </td>
                                 <td className="px-5 py-3.5"><StatusBadge status={p.status}/></td>
@@ -502,14 +542,14 @@ export default function AdminPanel() {
                                     <button
                                       onClick={() => handleVerify(p.id, "enable")}
                                       disabled={actioningId === p.id}
-                                      className="text-xs font-bold cursor-pointer disabled:opacity-50" style={{ color: "#1D4ED8" }}>
+                                      className="text-xs font-bold cursor-pointer disabled:opacity-50" style={{ color: "var(--pg-primary)" }}>
                                       Enable
                                     </button>
                                     <span className="text-slate-200">|</span>
                                     <button
                                       onClick={() => handleVerify(p.id, "disable")}
                                       disabled={actioningId === p.id}
-                                      className="text-xs font-medium text-slate-400 hover:text-red-500 cursor-pointer disabled:opacity-50">
+                                      className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 cursor-pointer disabled:opacity-50">
                                       Disable
                                     </button>
                                   </div>
@@ -521,8 +561,8 @@ export default function AdminPanel() {
                       </div>
                     )}
                     {queueTotal > queue.length && (
-                      <div className="px-5 py-3.5 border-t border-slate-100">
-                        <p className="text-xs text-slate-400">Showing {queue.length} of {queueTotal} pending</p>
+                      <div className="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Showing {queue.length} of {queueTotal} pending</p>
                       </div>
                     )}
                   </div>
@@ -531,39 +571,39 @@ export default function AdminPanel() {
 
               {/* USERS TAB */}
               {activeNav === "Users" && (
-                <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: "#e0f2fe" }}>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border" style={{ borderColor: "var(--pg-border-soft)" }}>
                   <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
-                    <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>All Users ({usersTotal})</h2>
+                    <h2 className="text-base font-bold" style={{ color: "var(--pg-text)" }}>All Users ({usersTotal})</h2>
                   </div>
                   {usersLoading ? (
-                    <div className="px-6 py-8 text-sm text-slate-400">Loading users...</div>
+                    <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">Loading users...</div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-slate-100">
+                          <tr className="border-b border-slate-100 dark:border-slate-800">
                             {["Name", "Role", "University / Phone", "Status", "Joined", "Action"].map((h) => (
-                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-5 py-3">{h}</th>
+                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 px-5 py-3">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                           {users.map((u) => (
-                            <tr key={u.id} className="hover:bg-[#EFF6FF]/60 transition-colors">
-                              <td className="px-5 py-3.5 text-sm font-semibold" style={{ color: "#1E3A5F" }}>{u.first_name} {u.last_name}</td>
+                            <tr key={u.id} className="hover:bg-[var(--pg-bg)]/60 transition-colors">
+                              <td className="px-5 py-3.5 text-sm font-semibold" style={{ color: "var(--pg-text)" }}>{u.first_name} {u.last_name}</td>
                               <td className="px-5 py-3.5">
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                                  style={u.role === 'admin' ? { background: "#f3e8ff", color: "#7c3aed", borderColor: "#e9d5ff" } : u.role === 'owner' ? { background: "#fff7ed", color: "#c2410c", borderColor: "#fed7aa" } : { background: "#dbeafe", color: "#1D4ED8", borderColor: "#bfdbfe" }}>
+                                  style={u.role === 'admin' ? { background: "#f3e8ff", color: "#7c3aed", borderColor: "#e9d5ff" } : u.role === 'owner' ? { background: "#fff7ed", color: "#c2410c", borderColor: "#fed7aa" } : { background: "var(--pg-chip-bg)", color: "var(--pg-primary)", borderColor: "var(--pg-border)" }}>
                                   {u.role}
                                 </span>
                               </td>
-                              <td className="px-5 py-3.5 text-sm text-slate-500">{u.university || u.phone || "—"}</td>
+                              <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">{u.university || u.phone || "—"}</td>
                               <td className="px-5 py-3.5">
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${u.is_active ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
                                   {u.is_active ? "ACTIVE" : "DISABLED"}
                                 </span>
                               </td>
-                              <td className="px-5 py-3.5 text-sm text-slate-500">
+                              <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">
                                 {new Date(u.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                               </td>
                               <td className="px-5 py-3.5">
@@ -581,17 +621,70 @@ export default function AdminPanel() {
                 </div>
               )}
 
+              {/* AGENTS TAB */}
+              {activeNav === "Agents" && (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border" style={{ borderColor: "var(--pg-border-soft)" }}>
+                  <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
+                    <h2 className="text-base font-bold" style={{ color: "var(--pg-text)" }}>Onboarding Agents ({agentsTotal})</h2>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--pg-text-secondary)" }}>Approve agents before their code can connect owner listings.</p>
+                  </div>
+                  {agentsLoading ? (
+                    <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">Loading agents...</div>
+                  ) : agents.length === 0 ? (
+                    <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">No agents have registered yet.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-100 dark:border-slate-800">
+                            {["Name", "Agent Code", "Phone", "Status", "Joined", "Action"].map((h) => (
+                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 px-5 py-3">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {agents.map((a) => (
+                            <tr key={a.id} className="hover:bg-[var(--pg-bg)]/60 transition-colors">
+                              <td className="px-5 py-3.5 text-sm font-semibold" style={{ color: "var(--pg-text)" }}>{a.first_name} {a.last_name}</td>
+                              <td className="px-5 py-3.5 text-sm font-mono tracking-wider text-slate-500 dark:text-slate-400">{a.agent_code || "—"}</td>
+                              <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">{a.phone || "—"}</td>
+                              <td className="px-5 py-3.5">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${a.is_verified_agent ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                                  {a.is_verified_agent ? "APPROVED" : "PENDING"}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">
+                                {new Date(a.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <button
+                                  onClick={() => handleVerifyAgent(a.id, a.is_verified_agent ? "unverify" : "verify")}
+                                  disabled={agentActioningId === a.id}
+                                  className={`text-xs font-bold cursor-pointer disabled:opacity-50 ${a.is_verified_agent ? 'text-red-500 hover:text-red-600' : 'text-blue-600 hover:text-blue-700'}`}
+                                  style={a.is_verified_agent ? {} : { color: "var(--pg-primary)" }}>
+                                  {a.is_verified_agent ? "Revoke" : "Approve"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* REVIEWS TAB */}
               {activeNav === "Reviews" && (
-                <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: "#e0f2fe" }}>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border" style={{ borderColor: "var(--pg-border-soft)" }}>
                   <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
-                    <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Pending Reviews ({reviewsTotal})</h2>
-                    <p className="text-xs mt-0.5" style={{ color: "#1E3A5F80" }}>Approve or reject tenant reviews before they go live.</p>
+                    <h2 className="text-base font-bold" style={{ color: "var(--pg-text)" }}>Pending Reviews ({reviewsTotal})</h2>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--pg-text-secondary)" }}>Approve or reject tenant reviews before they go live.</p>
                   </div>
                   {reviewsLoading ? (
-                    <div className="px-6 py-8 text-sm text-slate-400">Loading reviews...</div>
+                    <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">Loading reviews...</div>
                   ) : reviews.length === 0 ? (
-                    <div className="px-6 py-8 text-sm text-slate-400 flex items-center gap-2">
+                    <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                       <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                       No pending reviews.
                     </div>
@@ -601,32 +694,32 @@ export default function AdminPanel() {
                         <div key={r.id} className="px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2 mb-1">
-                              <span className="text-sm font-semibold" style={{ color: "#1E3A5F" }}>{r.property?.name}</span>
-                              <span className="text-xs text-slate-400">— {r.property?.city}</span>
+                              <span className="text-sm font-semibold" style={{ color: "var(--pg-text)" }}>{r.property?.name}</span>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">— {r.property?.city}</span>
                               {r.is_verified_stay && (
                                 <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-700">Verified Stay</span>
                               )}
                             </div>
                             <div className="flex items-center gap-1 mb-1">
                               {[1, 2, 3, 4, 5].map((s) => (
-                                <span key={s} style={{ color: s <= r.rating ? "#F97316" : "#e2e8f0" }}>★</span>
+                                <span key={s} style={{ color: s <= r.rating ? "var(--pg-accent)" : "#e2e8f0" }}>★</span>
                               ))}
-                              <span className="text-xs text-slate-400 ml-1">by {r.tenant?.first_name} {r.tenant?.last_name}</span>
+                              <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">by {r.tenant?.first_name} {r.tenant?.last_name}</span>
                             </div>
-                            {r.comment && <p className="text-sm text-slate-600">{r.comment}</p>}
+                            {r.comment && <p className="text-sm text-slate-600 dark:text-slate-400">{r.comment}</p>}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <button
                               onClick={() => handleModerateReview(r.id, "approve")}
                               disabled={moderatingId === r.id}
-                              className="text-xs font-bold cursor-pointer disabled:opacity-50" style={{ color: "#1D4ED8" }}>
+                              className="text-xs font-bold cursor-pointer disabled:opacity-50" style={{ color: "var(--pg-primary)" }}>
                               Approve
                             </button>
                             <span className="text-slate-200">|</span>
                             <button
                               onClick={() => handleModerateReview(r.id, "reject")}
                               disabled={moderatingId === r.id}
-                              className="text-xs font-medium text-slate-400 hover:text-red-500 cursor-pointer disabled:opacity-50">
+                              className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 cursor-pointer disabled:opacity-50">
                               Reject
                             </button>
                           </div>
@@ -639,18 +732,18 @@ export default function AdminPanel() {
 
               {/* PROPERTIES TAB */}
               {activeNav === "Properties" && (
-                <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: "#e0f2fe" }}>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border" style={{ borderColor: "var(--pg-border-soft)" }}>
                   <div className="px-5 sm:px-6 py-4 border-b border-blue-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                      <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>All Properties ({allPropertiesTotal})</h2>
-                      <p className="text-xs mt-0.5" style={{ color: "#1E3A5F80" }}>How many people have viewed and liked each listing.</p>
+                      <h2 className="text-base font-bold" style={{ color: "var(--pg-text)" }}>All Properties ({allPropertiesTotal})</h2>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--pg-text-secondary)" }}>How many people have viewed and liked each listing.</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Sort by</span>
+                      <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Sort by</span>
                       <select
                         value={propertiesSort}
                         onChange={(e) => handlePropertiesSortChange(e.target.value)}
-                        className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 cursor-pointer"
+                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-blue-400 cursor-pointer"
                       >
                         <option value="views">Most Viewed</option>
                         <option value="saves">Most Liked</option>
@@ -660,39 +753,39 @@ export default function AdminPanel() {
                     </div>
                   </div>
                   {allPropertiesLoading ? (
-                    <div className="px-6 py-8 text-sm text-slate-400">Loading properties...</div>
+                    <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">Loading properties...</div>
                   ) : allProperties.length === 0 ? (
-                    <div className="px-6 py-8 text-sm text-slate-400">No properties yet.</div>
+                    <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">No properties yet.</div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-slate-100">
+                          <tr className="border-b border-slate-100 dark:border-slate-800">
                             {["Property", "Owner", "City", "Status", "Views", "Likes", "Inquiries"].map((h) => (
-                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-5 py-3">{h}</th>
+                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 px-5 py-3">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                           {allProperties.map((p) => (
-                            <tr key={p.id} className="hover:bg-[#EFF6FF]/60 transition-colors">
-                              <td className="px-5 py-3.5 text-sm font-semibold text-[#1E3A5F]">{p.name}</td>
-                              <td className="px-5 py-3.5 text-sm text-slate-600">{p.owner?.first_name} {p.owner?.last_name}</td>
-                              <td className="px-5 py-3.5 text-sm text-slate-500">{p.city}</td>
+                            <tr key={p.id} className="hover:bg-[var(--pg-bg)]/60 transition-colors">
+                              <td className="px-5 py-3.5 text-sm font-semibold text-[var(--pg-text)]">{p.name}</td>
+                              <td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-400">{p.owner?.first_name} {p.owner?.last_name}</td>
+                              <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">{p.city}</td>
                               <td className="px-5 py-3.5"><StatusBadge status={p.status} /></td>
                               <td className="px-5 py-3.5">
-                                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1E3A5F]">
-                                  <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--pg-text)]">
+                                  <svg className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                                   {p.views ?? 0}
                                 </span>
                               </td>
                               <td className="px-5 py-3.5">
-                                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1E3A5F]">
+                                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--pg-text)]">
                                   <svg className="w-3.5 h-3.5 text-red-400" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
                                   {p.saves_count ?? 0}
                                 </span>
                               </td>
-                              <td className="px-5 py-3.5 text-sm text-slate-500">{p.inquiries_count ?? 0}</td>
+                              <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">{p.inquiries_count ?? 0}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -704,17 +797,17 @@ export default function AdminPanel() {
 
               {/* VERIFICATION TAB */}
               {activeNav === "Verification" && (
-                <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: "#e0f2fe" }}>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border" style={{ borderColor: "var(--pg-border-soft)" }}>
                   <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
-                    <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Property Verification ({verificationTotal})</h2>
-                    <p className="text-xs mt-0.5 mb-3" style={{ color: "#1E3A5F80" }}>Review submitted properties by status.</p>
+                    <h2 className="text-base font-bold" style={{ color: "var(--pg-text)" }}>Property Verification ({verificationTotal})</h2>
+                    <p className="text-xs mt-0.5 mb-3" style={{ color: "var(--pg-text-secondary)" }}>Review submitted properties by status.</p>
                     <div className="flex flex-wrap gap-2">
                       {VERIFICATION_STATUSES.map((s) => (
                         <button
                           key={s.value}
                           onClick={() => handleVerificationStatusChange(s.value)}
                           className="text-xs font-semibold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
-                          style={verificationStatus === s.value ? { background: "#1D4ED8", color: "white", borderColor: "#1D4ED8" } : { background: "white", color: "#1E3A5F80", borderColor: "#bfdbfe" }}
+                          style={verificationStatus === s.value ? { background: "var(--pg-primary)", color: "white", borderColor: "var(--pg-primary)" } : { background: "var(--pg-surface)", color: "var(--pg-text-secondary)", borderColor: "var(--pg-border)" }}
                         >
                           {s.label}
                         </button>
@@ -723,9 +816,9 @@ export default function AdminPanel() {
                   </div>
 
                   {verificationLoading ? (
-                    <div className="px-6 py-8 text-sm text-slate-400">Loading...</div>
+                    <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">Loading...</div>
                   ) : verificationQueue.length === 0 ? (
-                    <div className="px-6 py-8 text-sm text-slate-400 flex items-center gap-2">
+                    <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                       <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                       No properties with this status.
                     </div>
@@ -733,30 +826,30 @@ export default function AdminPanel() {
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-slate-100">
+                          <tr className="border-b border-slate-100 dark:border-slate-800">
                             {["Property", "Owner", "City", "Submitted", "Status", "Action"].map((h) => (
-                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 px-5 py-3">{h}</th>
+                              <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 px-5 py-3">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                           {verificationQueue.map((p) => (
-                            <tr key={p.id} className="hover:bg-[#EFF6FF]/60 transition-colors">
+                            <tr key={p.id} className="hover:bg-[var(--pg-bg)]/60 transition-colors">
                               <td className="px-5 py-3.5">
                                 <div className="flex items-center gap-3">
                                   {p.property_images?.[0]?.image_url && (
-                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#EFF6FF] shrink-0">
+                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-[var(--pg-bg)] shrink-0">
                                       <img src={p.property_images[0].image_url} alt={p.name} className="w-full h-full object-cover"/>
                                     </div>
                                   )}
-                                  <span className="text-sm font-semibold text-[#1E3A5F]">{p.name}</span>
+                                  <span className="text-sm font-semibold text-[var(--pg-text)]">{p.name}</span>
                                 </div>
                               </td>
-                              <td className="px-5 py-3.5 text-sm text-slate-600">
+                              <td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-400">
                                 {p.owner?.first_name} {p.owner?.last_name}
                               </td>
-                              <td className="px-5 py-3.5 text-sm text-slate-500">{p.city}</td>
-                              <td className="px-5 py-3.5 text-sm text-slate-500">
+                              <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">{p.city}</td>
+                              <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">
                                 {new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                               </td>
                               <td className="px-5 py-3.5"><StatusBadge status={p.status}/></td>
@@ -765,14 +858,14 @@ export default function AdminPanel() {
                                   <button
                                     onClick={() => handleVerificationAction(p.id, "enable")}
                                     disabled={verificationActioningId === p.id}
-                                    className="text-xs font-bold cursor-pointer disabled:opacity-50" style={{ color: "#1D4ED8" }}>
+                                    className="text-xs font-bold cursor-pointer disabled:opacity-50" style={{ color: "var(--pg-primary)" }}>
                                     Enable
                                   </button>
                                   <span className="text-slate-200">|</span>
                                   <button
                                     onClick={() => handleVerificationAction(p.id, "disable")}
                                     disabled={verificationActioningId === p.id}
-                                    className="text-xs font-medium text-slate-400 hover:text-red-500 cursor-pointer disabled:opacity-50">
+                                    className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 cursor-pointer disabled:opacity-50">
                                     Disable
                                   </button>
                                 </div>
@@ -789,45 +882,45 @@ export default function AdminPanel() {
               {/* SETTINGS TAB */}
               {activeNav === "Settings" && (
                 <div className="space-y-6 max-w-xl">
-                  <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: "#e0f2fe" }}>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border" style={{ borderColor: "var(--pg-border-soft)" }}>
                     <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
-                      <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Admin Account</h2>
-                      <p className="text-xs mt-0.5" style={{ color: "#1E3A5F80" }}>{settingsUser?.email}</p>
+                      <h2 className="text-base font-bold" style={{ color: "var(--pg-text)" }}>Admin Account</h2>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--pg-text-secondary)" }}>{settingsUser?.email}</p>
                     </div>
                     {settingsLoading ? (
-                      <div className="px-6 py-8 text-sm text-slate-400">Loading...</div>
+                      <div className="px-6 py-8 text-sm text-slate-500 dark:text-slate-400">Loading...</div>
                     ) : (
                       <form onSubmit={handleSettingsSave} className="px-5 sm:px-6 py-5 space-y-4">
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">First Name</label>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">First Name</label>
                             <input
                               type="text"
                               value={settingsForm.first_name}
                               onChange={(e) => setSettingsForm((f) => ({ ...f, first_name: e.target.value }))}
                               className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                              style={{ borderColor: "#bfdbfe" }}
+                              style={{ borderColor: "var(--pg-border)" }}
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Last Name</label>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">Last Name</label>
                             <input
                               type="text"
                               value={settingsForm.last_name}
                               onChange={(e) => setSettingsForm((f) => ({ ...f, last_name: e.target.value }))}
                               className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                              style={{ borderColor: "#bfdbfe" }}
+                              style={{ borderColor: "var(--pg-border)" }}
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Phone</label>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">Phone</label>
                           <input
                             type="tel"
                             value={settingsForm.phone}
                             onChange={(e) => setSettingsForm((f) => ({ ...f, phone: e.target.value }))}
                             className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                            style={{ borderColor: "#bfdbfe" }}
+                            style={{ borderColor: "var(--pg-border)" }}
                           />
                         </div>
                         {settingsMessage && <p className="text-xs" style={{ color: settingsMessage.startsWith("Failed") ? "#dc2626" : "#15803d" }}>{settingsMessage}</p>}
@@ -835,7 +928,7 @@ export default function AdminPanel() {
                           type="submit"
                           disabled={settingsSaving}
                           className="text-sm font-semibold px-5 py-2.5 rounded-xl text-white cursor-pointer disabled:opacity-60"
-                          style={{ background: "#1D4ED8" }}
+                          style={{ background: "var(--pg-primary)" }}
                         >
                           {settingsSaving ? "Saving..." : "Save Changes"}
                         </button>
@@ -843,29 +936,29 @@ export default function AdminPanel() {
                     )}
                   </div>
 
-                  <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: "#e0f2fe" }}>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border" style={{ borderColor: "var(--pg-border-soft)" }}>
                     <div className="px-5 sm:px-6 py-4 border-b border-blue-50">
-                      <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Change Password</h2>
+                      <h2 className="text-base font-bold" style={{ color: "var(--pg-text)" }}>Change Password</h2>
                     </div>
                     <form onSubmit={handlePasswordSave} className="px-5 sm:px-6 py-5 space-y-4">
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">New Password</label>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">New Password</label>
                         <input
                           type="password"
                           value={passwordForm.new_password}
                           onChange={(e) => setPasswordForm((f) => ({ ...f, new_password: e.target.value }))}
                           className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                          style={{ borderColor: "#bfdbfe" }}
+                          style={{ borderColor: "var(--pg-border)" }}
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-400">Confirm New Password</label>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5 text-slate-500 dark:text-slate-400">Confirm New Password</label>
                         <input
                           type="password"
                           value={passwordForm.confirm_password}
                           onChange={(e) => setPasswordForm((f) => ({ ...f, confirm_password: e.target.value }))}
                           className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                          style={{ borderColor: "#bfdbfe" }}
+                          style={{ borderColor: "var(--pg-border)" }}
                         />
                       </div>
                       {passwordMessage && <p className="text-xs" style={{ color: passwordMessage.startsWith("Failed") || passwordMessage.includes("match") || passwordMessage.includes("must be") ? "#dc2626" : "#15803d" }}>{passwordMessage}</p>}
@@ -873,7 +966,7 @@ export default function AdminPanel() {
                         type="submit"
                         disabled={passwordSaving}
                         className="text-sm font-semibold px-5 py-2.5 rounded-xl text-white cursor-pointer disabled:opacity-60"
-                        style={{ background: "#1D4ED8" }}
+                        style={{ background: "var(--pg-primary)" }}
                       >
                         {passwordSaving ? "Updating..." : "Update Password"}
                       </button>
@@ -883,9 +976,9 @@ export default function AdminPanel() {
               )}
 
               {/* Footer */}
-              <div className="border-t pt-5 mt-8 flex items-center justify-between" style={{ borderColor: "#e0f2fe" }}>
-                <p className="text-sm font-bold" style={{ color: "#1D4ED8" }}>PG Connect</p>
-                <p className="text-xs" style={{ color: "#1E3A5F60" }}>&copy; {new Date().getFullYear()} PG Connect.</p>
+              <div className="border-t pt-5 mt-8 flex items-center justify-between" style={{ borderColor: "var(--pg-border-soft)" }}>
+                <p className="text-sm font-bold" style={{ color: "var(--pg-primary)" }}>PG Connect</p>
+                <p className="text-xs" style={{ color: "var(--pg-text-tertiary)" }}>&copy; {new Date().getFullYear()} PG Connect.</p>
               </div>
             </div>
           </main>

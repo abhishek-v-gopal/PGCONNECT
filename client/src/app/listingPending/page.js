@@ -107,12 +107,12 @@ export default function ListingPending() {
         `}</style>
       </Head>
 
-      <div className="min-h-screen bg-[#EFF6FF] flex flex-col">
+      <div className="min-h-screen bg-[var(--pg-bg)] flex flex-col">
 
         <Navbar />
 
         {/* Main */}
-        <main className="flex-1 flex items-center justify-center px-4 py-12 sm:py-16">
+        <main id="main-content" className="flex-1 flex items-center justify-center px-4 py-12 sm:py-16">
           <div className="w-full max-w-lg">
 
             {/* Animated status icon */}
@@ -126,7 +126,7 @@ export default function ListingPending() {
             </div>
 
             {/* Status card */}
-            <div className="bg-white border border-[#bfdbfe] rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 border border-[var(--pg-border)] rounded-2xl shadow-sm overflow-hidden">
 
               {/* Amber top bar */}
               <div className={`${isVerified ? "bg-green-500" : "bg-amber-400"} h-1.5 w-full`} />
@@ -141,8 +141,8 @@ export default function ListingPending() {
                         </svg>
                         Verified Property
                       </span>
-                      <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F] tracking-tight">Your property is verified</h1>
-                      <p className="mt-2 text-sm text-[#1E3A5F60] leading-relaxed">
+                      <h1 className="text-2xl sm:text-3xl font-bold text-[var(--pg-text)] tracking-tight">Your property is verified</h1>
+                      <p className="mt-2 text-sm text-[var(--pg-text-tertiary)] leading-relaxed">
                         We’re taking you to the property page now.
                       </p>
                     </>
@@ -154,9 +154,9 @@ export default function ListingPending() {
                         </svg>
                         Pending Verification
                       </span>
-                      <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F] tracking-tight">Your listing is under review</h1>
-                      <p className="mt-2 text-sm text-[#1E3A5F60] leading-relaxed">
-                        Our team is reviewing your property. We'll verify and publish it within <strong className="text-[#1E3A5F]">48 hours</strong>.
+                      <h1 className="text-2xl sm:text-3xl font-bold text-[var(--pg-text)] tracking-tight">Your listing is under review</h1>
+                      <p className="mt-2 text-sm text-[var(--pg-text-tertiary)] leading-relaxed">
+                        Our team is reviewing your property. We'll verify and publish it within <strong className="text-[var(--pg-text)]">48 hours</strong>.
                       </p>
                     </>
                   )}
@@ -164,12 +164,12 @@ export default function ListingPending() {
 
                 {/* Listing summary */}
                 {(listing || property) && (
-                  <div className="bg-[#EFF6FF] border border-[#bfdbfe] rounded-xl p-4 mb-6 space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Your Submission</p>
+                  <div className="bg-[var(--pg-bg)] border border-[var(--pg-border)] rounded-xl p-4 mb-6 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Your Submission</p>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[#1E3A5F] truncate">{property?.name || listing?.propertyName}</p>
-                        <p className="text-xs text-[#1E3A5F60] mt-0.5 flex items-center gap-1">
+                        <p className="font-semibold text-[var(--pg-text)] truncate">{property?.name || listing?.propertyName}</p>
+                        <p className="text-xs text-[var(--pg-text-tertiary)] mt-0.5 flex items-center gap-1">
                           <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                           </svg>
@@ -179,19 +179,19 @@ export default function ListingPending() {
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-[#1D4ED8] text-sm">₹{Number(property?.starting_price || listing?.pricePerBed || 0).toLocaleString("en-IN")}/bed</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{property?.total_beds || listing?.totalBeds || 0} beds</p>
+                        <p className="font-bold text-[var(--pg-primary)] text-sm">₹{Number(property?.starting_price || listing?.pricePerBed || 0).toLocaleString("en-IN")}/bed</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{property?.total_beds || listing?.totalBeds || 0} beds</p>
                       </div>
                     </div>
                     {((property?.amenities?.length > 0) || listing?.amenities?.length > 0) && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {(property?.amenities || listing?.amenities || []).map((a) => (
-                          <span key={a} className="bg-[#dbeafe] text-[#1D4ED8] text-[10px] font-semibold px-2 py-0.5 rounded-md">{a}</span>
+                          <span key={a} className="bg-[var(--pg-chip-bg)] text-[var(--pg-primary)] text-[10px] font-semibold px-2 py-0.5 rounded-md">{a}</span>
                         ))}
                       </div>
                     )}
                     {submittedAt && (
-                      <p className="text-[11px] text-slate-400 pt-1 border-t border-[#bfdbfe]">Submitted on {submittedAt}</p>
+                      <p className="text-[11px] text-slate-500 pt-1 border-t border-[var(--pg-border)]">Submitted on {submittedAt}</p>
                     )}
                   </div>
                 )}
@@ -206,7 +206,7 @@ export default function ListingPending() {
                   ].map((step, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold
-                        ${step.done ? "bg-green-500 text-white" : step.active ? "bg-amber-400 text-white" : "bg-[#dbeafe] text-slate-400"}`}>
+                        ${step.done ? "bg-green-500 text-white" : step.active ? "bg-amber-400 text-white" : "bg-[var(--pg-chip-bg)] text-slate-500"}`}>
                         {step.done ? (
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12" />
@@ -218,7 +218,7 @@ export default function ListingPending() {
                           </svg>
                         ) : i + 1}
                       </div>
-                      <span className={`text-sm ${step.done ? "text-green-700 font-medium" : step.active ? "text-amber-700 font-semibold" : "text-slate-400"}`}>
+                      <span className={`text-sm ${step.done ? "text-green-700 font-medium" : step.active ? "text-amber-700 font-semibold" : "text-slate-500"}`}>
                         {step.label}
                       </span>
                     </div>
@@ -226,8 +226,8 @@ export default function ListingPending() {
                 </div>
 
                 {/* What's next */}
-                <div className="bg-[#dbeafe] border border-blue-100 rounded-xl p-4 mb-6">
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#1D4ED8] mb-2">What happens next?</p>
+                <div className="bg-[var(--pg-chip-bg)] border border-blue-100 rounded-xl p-4 mb-6">
+                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--pg-primary)] mb-2">What happens next?</p>
                   <ul className="space-y-1.5">
                     {[
                       "You'll receive an email confirmation shortly.",
@@ -248,13 +248,13 @@ export default function ListingPending() {
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => router.push(isVerified && propertyId ? `/property/${propertyId}` : "/")}
-                    className="flex-1 bg-[#1D4ED8] hover:bg-[#1D4ED8] active:scale-[0.98] text-white text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
+                    className="flex-1 bg-[var(--pg-primary)] hover:bg-[var(--pg-primary)] active:scale-[0.98] text-white text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
                   >
                     {isVerified && propertyId ? "View Property" : "Browse Properties"}
                   </button>
                   <button
                     onClick={clearAndRelist}
-                    className="flex-1 border border-[#bfdbfe] hover:border-[#bfdbfe] bg-white text-[#1E3A5F] text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
+                    className="flex-1 border border-[var(--pg-border)] hover:border-[var(--pg-border)] bg-white dark:bg-slate-800 text-[var(--pg-text)] text-sm font-semibold py-3 rounded-xl transition-all cursor-pointer"
                   >
                     {isVerified ? "Create New Listing" : "Edit Submission"}
                   </button>
@@ -263,7 +263,7 @@ export default function ListingPending() {
               </div>
             </div>
 
-            <p className="flex items-center justify-center gap-1.5 text-xs text-slate-400 mt-5">
+            <p className="flex items-center justify-center gap-1.5 text-xs text-slate-500 mt-5">
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
@@ -273,11 +273,11 @@ export default function ListingPending() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-[#bfdbfe]">
+        <footer className="bg-white dark:bg-slate-800 border-t border-[var(--pg-border)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <p className="font-serif-display text-base font-bold text-[#1E3A5F]">PG Connect</p>
-              <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
+              <p className="font-serif-display text-base font-bold text-[var(--pg-text)]">PG Connect</p>
+              <p className="text-xs text-slate-500 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
             </div>
             <div className="flex flex-wrap gap-5">
               {[
@@ -286,7 +286,7 @@ export default function ListingPending() {
                 { label: "Help Center", href: "/help" },
                 { label: "Contact Us", href: "/contact" },
               ].map((l) => (
-                <Link key={l.label} href={l.href} className="text-xs text-[#1E3A5F60] hover:text-[#1D4ED8] transition-colors">{l.label}</Link>
+                <Link key={l.label} href={l.href} className="text-xs text-[var(--pg-text-tertiary)] hover:text-[var(--pg-primary)] transition-colors">{l.label}</Link>
               ))}
             </div>
           </div>

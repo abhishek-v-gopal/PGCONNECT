@@ -52,7 +52,7 @@ export default function ReviewForm({ propertyId }) {
   const displayRating = hoverRating || rating;
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
       <h2 className="text-xl font-bold">Write a Review</h2>
       <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
         <div className="flex items-center gap-1">
@@ -66,7 +66,7 @@ export default function ReviewForm({ propertyId }) {
               onMouseLeave={() => setHoverRating(0)}
               onClick={() => setRating(star)}
               className="cursor-pointer text-2xl leading-none"
-              style={{ color: star <= displayRating ? "#F97316" : "#e2e8f0" }}
+              style={{ color: star <= displayRating ? "var(--pg-accent)" : "#e2e8f0" }}
               aria-label={`${star} star`}
             >
               ★
@@ -82,7 +82,7 @@ export default function ReviewForm({ propertyId }) {
           onChange={(e) => setComment(e.target.value)}
           placeholder="Share your experience living here (optional)"
           rows={3}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
         />
 
         <AnimatePresence>

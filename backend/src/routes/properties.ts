@@ -20,7 +20,7 @@ propertiesRouter.get('/', publicCache, async (c) => {
   let query = supabase
     .from('properties')
     .select(`
-      id, name, address, city, state, landmark,
+      id, name, address, city, state, landmark, lat, lng,
       amenities, gender, starting_price, rating, total_ratings,
       status, is_verified, available_beds,
       property_images(image_url, position),
@@ -79,7 +79,7 @@ propertiesRouter.get('/owner/mine', authMiddleware, requireRole('owner', 'admin'
     .from('properties')
     .select(`
       *, property_images(image_key, image_url, position),
-      property_rooms(*)
+      property_rooms(*, beds(id, label, status))
     `)
     .eq('owner_id', user.id)
     .order('created_at', { ascending: false })
@@ -138,6 +138,7 @@ propertiesRouter.post('/', authMiddleware, requireRole('owner', 'admin'), async 
       manager_name: formData.get('manager_name'),
       manager_phone: formData.get('manager_phone'),
       referral_code: formData.get('referral_code'),
+      agent_code: formData.get('agent_code'),
       commission_option: formData.get('commission_option'),
     }
     imageFiles = formData.getAll('images') as File[]
@@ -161,6 +162,19 @@ propertiesRouter.post('/', authMiddleware, requireRole('owner', 'admin'), async 
     referredBy = referrer?.id ?? null
   }
 
+  // Resolve agent code to a verified agent UUID — unverified/invalid codes are silently ignored
+  let agentId: string | null = null
+  if (body.agent_code) {
+    const { data: agent } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('agent_code', body.agent_code)
+      .eq('role', 'agent')
+      .eq('is_verified_agent', true)
+      .single()
+    agentId = agent?.id ?? null
+  }
+
   const amenities = typeof body.amenities === 'string'
     ? body.amenities.split(',').map((a: string) => a.trim()).filter(Boolean)
     : (body.amenities as string[] | undefined) ?? []
@@ -177,6 +191,7 @@ propertiesRouter.post('/', authMiddleware, requireRole('owner', 'admin'), async 
     .insert({
       owner_id: user.id,
       referred_by: referredBy,
+      agent_id: agentId,
       name: body.name,
       tagline: body.tagline,
       address: body.address,
@@ -197,15 +212,25 @@ propertiesRouter.post('/', authMiddleware, requireRole('owner', 'admin'), async 
 
   if (error || !property) return c.json({ success: false, message: error?.message ?? 'Failed to create property' }, 500)
 
-  // Insert rooms
+  // Insert rooms, then provision one bed row per total_beds — the sync
+  // trigger derives property_rooms/properties total_beds & available_beds
+  // from these rows, so no manual counter math is needed here.
   if (rooms.length > 0) {
-    const totalBeds = (rooms as Array<{ total_beds: number }>).reduce((s, r) => s + (r.total_beds ?? 0), 0)
-    const availableBeds = (rooms as Array<{ available_beds: number }>).reduce((s, r) => s + (r.available_beds ?? 0), 0)
+    const { data: insertedRooms, error: roomsError } = await supabase
+      .from('property_rooms')
+      .insert((rooms as Array<Record<string, unknown>>).map((r) => ({ ...r, property_id: property.id })))
+      .select('id, total_beds')
 
-    await supabase.from('property_rooms').insert(
-      (rooms as Array<Record<string, unknown>>).map((r) => ({ ...r, property_id: property.id }))
+    if (roomsError) return c.json({ success: false, message: roomsError.message }, 500)
+
+    const bedInserts = (insertedRooms ?? []).flatMap((room: { id: string; total_beds: number }) =>
+      Array.from({ length: Math.max(room.total_beds ?? 0, 0) }, (_, i) => ({
+        room_id: room.id,
+        property_id: property.id,
+        label: `Bed ${i + 1}`,
+      }))
     )
-    await supabase.from('properties').update({ total_beds: totalBeds, available_beds: availableBeds }).eq('id', property.id)
+    if (bedInserts.length > 0) await supabase.from('beds').insert(bedInserts)
   }
 
   // Upload images to R2
@@ -252,15 +277,77 @@ propertiesRouter.patch('/:id', authMiddleware, async (c) => {
   if (error) return c.json({ success: false, message: error.message }, 500)
 
   if (body.rooms) {
-    await supabase.from('property_rooms').delete().eq('property_id', propertyId)
-    const rooms = Array.isArray(body.rooms) ? body.rooms : JSON.parse(body.rooms)
-    await supabase.from('property_rooms').insert(
-      rooms.map((r: Record<string, unknown>) => ({ ...r, property_id: propertyId }))
-    )
-    const totalBeds = rooms.reduce((s: number, r: { total_beds: number }) => s + (r.total_beds ?? 0), 0)
-    const availableBeds = rooms.reduce((s: number, r: { available_beds: number }) => s + (r.available_beds ?? 0), 0)
-    const startingPrice = Math.min(...rooms.map((r: { price: number }) => r.price))
-    await supabase.from('properties').update({ total_beds: totalBeds, available_beds: availableBeds, starting_price: startingPrice }).eq('id', propertyId)
+    const incomingRooms: Array<Record<string, unknown>> = Array.isArray(body.rooms) ? body.rooms : JSON.parse(body.rooms)
+
+    // Real bed rows are now linked to bookings — a blind delete-all-and-reinsert
+    // would CASCADE-delete beds out from under active tenancies. Diff instead.
+    const { data: existingRooms } = await supabase
+      .from('property_rooms')
+      .select('id, type, price, description, total_beds, beds(id, label, status)')
+      .eq('property_id', propertyId)
+
+    type ExistingRoom = { id: string; type: string; price: number; description: string | null; total_beds: number; beds: { id: string; label: string; status: string }[] }
+    const existingById = new Map<string, ExistingRoom>(((existingRooms ?? []) as ExistingRoom[]).map((r) => [r.id, r]))
+    const keptIds = new Set(incomingRooms.map((r) => r.id as string | undefined).filter(Boolean) as string[])
+
+    // Rooms omitted from the payload — only safe to drop if every bed on them is vacant.
+    for (const room of existingRooms ?? []) {
+      const r = room as ExistingRoom
+      if (keptIds.has(r.id)) continue
+      const hasClaimedBed = r.beds.some((b) => b.status === 'occupied' || b.status === 'locked')
+      if (hasClaimedBed) {
+        return c.json({ success: false, message: `Cannot remove a room type with an occupied or reserved bed (${r.type}).` }, 409)
+      }
+      await supabase.from('property_rooms').delete().eq('id', r.id)
+    }
+
+    for (const r of incomingRooms) {
+      const roomId = r.id as string | undefined
+      const targetBeds = Math.max(Number(r.total_beds) || 0, 0)
+
+      if (roomId && existingById.has(roomId)) {
+        const current = existingById.get(roomId)!
+        await supabase.from('property_rooms').update({
+          type: r.type, price: r.price, description: r.description,
+        }).eq('id', roomId)
+
+        const currentBeds = current.beds
+        const diff = targetBeds - currentBeds.length
+        if (diff > 0) {
+          const existingLabels = new Set(currentBeds.map((b) => b.label))
+          let n = 1
+          const newBeds = []
+          while (newBeds.length < diff) {
+            const label = `Bed ${n}`
+            if (!existingLabels.has(label)) newBeds.push({ room_id: roomId, property_id: propertyId, label })
+            n += 1
+          }
+          await supabase.from('beds').insert(newBeds)
+        } else if (diff < 0) {
+          const vacant = currentBeds.filter((b) => b.status === 'vacant')
+          if (vacant.length < -diff) {
+            return c.json({ success: false, message: `Cannot reduce beds below the number currently reserved or occupied (${r.type}).` }, 409)
+          }
+          const toRemove = vacant.slice(0, -diff).map((b) => b.id)
+          await supabase.from('beds').delete().in('id', toRemove)
+        }
+      } else {
+        const { data: newRoom, error: newRoomError } = await supabase
+          .from('property_rooms')
+          .insert({ type: r.type, price: r.price, description: r.description, total_beds: targetBeds, available_beds: targetBeds, property_id: propertyId })
+          .select('id')
+          .single()
+        if (newRoomError || !newRoom) return c.json({ success: false, message: newRoomError?.message ?? 'Failed to add room' }, 500)
+
+        const newBeds = Array.from({ length: targetBeds }, (_, i) => ({ room_id: newRoom.id, property_id: propertyId, label: `Bed ${i + 1}` }))
+        if (newBeds.length > 0) await supabase.from('beds').insert(newBeds)
+      }
+    }
+
+    const startingPrice = Math.min(...incomingRooms.map((r) => Number(r.price)))
+    await supabase.from('properties').update({ starting_price: startingPrice }).eq('id', propertyId)
+    // total_beds/available_beds are no longer written here — the sync trigger
+    // on `beds` derives both from the room/bed changes made above.
   }
 
   return c.json({ success: true, property: data })

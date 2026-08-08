@@ -7,6 +7,7 @@ import { getAllProperties } from "../api";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { Stagger, StaggerItem } from "../components/Reveal";
+import { useDismissableOverlay } from "../../lib/useDismissableOverlay";
 
 const AMENITY_ICONS = {
   wifi: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>,
@@ -54,6 +55,31 @@ const getInitialBudget = (priceLabel) => {
   return [5000, 25000];
 };
 
+const haversineKm = (a, b) => {
+  if (!a || !b || a.lat == null || a.lng == null || b.lat == null || b.lng == null) return null;
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+
+const formatShortDate = (isoDate) => {
+  if (!isoDate) return "";
+  const d = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
+};
+
+const toISODate = (date) => date.toISOString().slice(0, 10);
+const addDays = (isoDate, days) => {
+  const d = new Date(`${isoDate}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return toISODate(d);
+};
+
 const mapProperty = (property) => {
   const rooms = Array.isArray(property?.property_rooms) ? property.property_rooms : [];
   const room = rooms[0] || {};
@@ -75,8 +101,10 @@ const mapProperty = (property) => {
     badgeStyle: "",
     badgeColor: "#06B6D4",
     tag: availableBeds > 0 ? `${availableBeds} Beds Left` : "Full",
-    tagColor: availableBeds > 0 ? "#F97316" : "#64748b",
+    tagColor: availableBeds > 0 ? "var(--pg-accent)" : "#64748b",
     availableBeds,
+    lat: property?.lat != null ? Number(property.lat) : null,
+    lng: property?.lng != null ? Number(property.lng) : null,
     amenities: Array.isArray(property?.amenities) ? property.amenities : [],
     amenityIcons: Array.isArray(property?.amenities) ? property.amenities.map(getAmenityIconKey) : [],
     roomType: room?.type || (rooms.length > 1 ? "Multiple" : "Single"),
@@ -115,7 +143,8 @@ function SearchResultsContent() {
     if (qGender === "Any Gender") return "Any";
     return qGender;
   });
-  const [moveIn, setMoveIn] = useState("");
+  const today = toISODate(new Date());
+  const [moveIn, setMoveIn] = useState(today);
   const [sort, setSort] = useState("Price: Low to High");
   const [search, setSearch] = useState(qLocation);
   const [wishlist, setWishlist] = useState([2]);
@@ -124,6 +153,48 @@ function SearchResultsContent() {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Booking-style search capsule
+  const [checkOut, setCheckOut] = useState(addDays(today, 1));
+  const [datesOpen, setDatesOpen] = useState(false);
+  const [rooms, setRooms] = useState(1);
+  const [guests, setGuests] = useState(1);
+  const [guestsOpen, setGuestsOpen] = useState(false);
+  const [userCoords, setUserCoords] = useState(null);
+  const [nearMeActive, setNearMeActive] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState("");
+  const [language, setLanguage] = useState("EN");
+  const [languageOpen, setLanguageOpen] = useState(false);
+
+  const filtersDrawerRef = useDismissableOverlay(filtersOpen, () => setFiltersOpen(false));
+  const datesPopoverRef = useDismissableOverlay(datesOpen, () => setDatesOpen(false));
+  const guestsPopoverRef = useDismissableOverlay(guestsOpen, () => setGuestsOpen(false));
+  const languagePopoverRef = useDismissableOverlay(languageOpen, () => setLanguageOpen(false));
+
+  const LANGUAGES = ["EN", "ML", "HI"];
+
+  const handleNearMe = () => {
+    if (!navigator.geolocation) {
+      setGeoError("Location isn't supported on this device.");
+      return;
+    }
+    setLocating(true);
+    setGeoError("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setNearMeActive(true);
+        setSort("Distance");
+        setLocating(false);
+      },
+      () => {
+        setGeoError("Couldn't access your location.");
+        setLocating(false);
+      },
+      { timeout: 10000 }
+    );
+  };
 
   const AMENITY_CHIPS = ["WiFi", "AC", "Gym", "Meals", "Laundry", "Security"];
   const ROOM_TYPES = ["Single", "Double", "Triple"];
@@ -167,13 +238,19 @@ function SearchResultsContent() {
   }, []);
 
   // Apply filters
-  const filtered = properties
+  const withDistance = properties.map((p) => ({
+    ...p,
+    distanceKm: nearMeActive ? haversineKm(userCoords, p) : null,
+  }));
+
+  const filtered = withDistance
     .filter((p) => {
       if (budgetActive && (p.price < budgetMin || p.price > budgetMax)) return false;
       if (roomTypes.length > 0 && !roomTypes.includes(p.roomType)) return false;
       if (gender !== "Any" && p.gender !== "Co-ed" && p.gender !== gender) return false;
       if (amenities.length > 0 && !amenities.every((a) => p.amenities.includes(a))) return false;
       if (moveIn && p.availableBeds <= 0) return false;
+      if (guests > 1 && p.availableBeds < guests) return false;
       const searchValue = search.toLowerCase();
       if (searchValue
         && !p.name.toLowerCase().includes(searchValue)
@@ -187,6 +264,11 @@ function SearchResultsContent() {
       if (sort === "Price: Low to High") return a.price - b.price;
       if (sort === "Price: High to Low") return b.price - a.price;
       if (sort === "Rating") return (b.rating || 0) - (a.rating || 0);
+      if (sort === "Distance") {
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+      }
       return 0;
     });
 
@@ -222,15 +304,15 @@ function SearchResultsContent() {
   const FilterSidebar = () => (
     <div className="w-full space-y-6">
       <div>
-        <h2 className="text-base font-bold" style={{ color: "#1E3A5F" }}>Filters</h2>
-        <p className="text-xs mt-0.5" style={{ color: "#1E3A5F80" }}>Refine your sanctuary</p>
+        <h2 className="text-base font-bold" style={{ color: "var(--pg-text)" }}>Filters</h2>
+        <p className="text-xs mt-0.5" style={{ color: "var(--pg-text-secondary)" }}>Refine your sanctuary</p>
       </div>
 
       {/* Budget Range */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <svg className="w-4 h-4" style={{ color: "#1D4ED8" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          <span className="text-sm font-bold" style={{ color: "#1D4ED8" }}>Budget Range</span>
+          <svg className="w-4 h-4" style={{ color: "var(--pg-primary)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          <span className="text-sm font-bold" style={{ color: "var(--pg-primary)" }}>Budget Range</span>
         </div>
         <div className="flex justify-between text-xs text-slate-500 mb-2">
           <span>₹{budgetMin.toLocaleString("en-IN")}</span>
@@ -238,19 +320,19 @@ function SearchResultsContent() {
         </div>
         <input type="range" min={0} max={25000} step={500} value={budgetMin}
           onChange={(e) => { setBudgetActive(true); setBudgetMin(Number(e.target.value)); }}
-          className="w-full cursor-pointer" style={{ accentColor: "#1D4ED8" }} />
+          className="w-full cursor-pointer" style={{ accentColor: "var(--pg-primary)" }} />
         <input type="range" min={0} max={50000} step={500} value={budgetMax}
           onChange={(e) => { setBudgetActive(true); setBudgetMax(Number(e.target.value)); }}
-          className="w-full cursor-pointer mt-1" style={{ accentColor: "#1D4ED8" }} />
+          className="w-full cursor-pointer mt-1" style={{ accentColor: "var(--pg-primary)" }} />
       </div>
 
-      <div className="h-px bg-slate-100" />
+      <div className="h-px bg-slate-100 dark:bg-slate-800" />
 
       {/* Room Type */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <svg className="w-4 h-4 text-[#1D4ED8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 14h20"/></svg>
-          <span className="text-sm font-bold text-[#1D4ED8]">Room Type</span>
+          <svg className="w-4 h-4 text-[var(--pg-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 14h20"/></svg>
+          <span className="text-sm font-bold text-[var(--pg-primary)]">Room Type</span>
         </div>
         <div className="space-y-2.5">
           {ROOM_TYPES.map((t) => (
@@ -259,7 +341,7 @@ function SearchResultsContent() {
                 whileTap={{ scale: 0.85 }}
                 onClick={() => toggleRoomType(t)}
                 className="w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer"
-                style={roomTypes.includes(t) ? { background: "#1D4ED8", borderColor: "#1D4ED8" } : { background: "white", borderColor: "#bfdbfe" }}
+                style={roomTypes.includes(t) ? { background: "var(--pg-primary)", borderColor: "var(--pg-primary)" } : { background: "var(--pg-surface)", borderColor: "var(--pg-border)" }}
               >
                 {roomTypes.includes(t) && (
                   <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -267,73 +349,73 @@ function SearchResultsContent() {
                   </svg>
                 )}
               </motion.div>
-              <span className="text-sm text-slate-700 group-hover:text-[#1E3A5F] transition-colors">{t}</span>
+              <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-[var(--pg-text)] transition-colors">{t}</span>
             </label>
           ))}
         </div>
       </div>
 
-      <div className="h-px bg-slate-100" />
+      <div className="h-px bg-slate-100 dark:bg-slate-800" />
 
       {/* Amenities */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <svg className="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span className="text-sm font-semibold text-slate-700">Amenities</span>
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Amenities</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {AMENITY_CHIPS.map((a) => (
             <motion.button key={a} whileTap={{ scale: 0.92 }} onClick={() => toggleAmenity(a)}
               className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer"
-              style={amenities.includes(a) ? { background: "#1D4ED8", color: "white", borderColor: "#1D4ED8" } : { background: "white", color: "#1E3A5F80", borderColor: "#bfdbfe" }}>
+              style={amenities.includes(a) ? { background: "var(--pg-primary)", color: "white", borderColor: "var(--pg-primary)" } : { background: "var(--pg-surface)", color: "var(--pg-text-secondary)", borderColor: "var(--pg-border)" }}>
               {a}
             </motion.button>
           ))}
         </div>
       </div>
 
-      <div className="h-px bg-slate-100" />
+      <div className="h-px bg-slate-100 dark:bg-slate-800" />
 
       {/* House Rules */}
       <button className="flex items-center gap-2 w-full text-left">
         <svg className="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        <span className="text-sm font-semibold text-slate-700">House Rules</span>
-        <svg className="w-4 h-4 text-slate-400 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">House Rules</span>
+        <svg className="w-4 h-4 text-slate-500 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
 
-      <div className="h-px bg-slate-100" />
+      <div className="h-px bg-slate-100 dark:bg-slate-800" />
 
       {/* Gender Preference */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <svg className="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span className="text-sm font-semibold text-slate-700">Gender Preference</span>
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Gender Preference</span>
         </div>
         <div className="flex gap-2">
           {["Any", "Boys", "Girls", "Co-ed"].map((g) => (
             <button key={g} onClick={() => setGender(g)}
               className="flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer"
-              style={gender === g ? { background: "#1D4ED8", color: "white", borderColor: "#1D4ED8" } : { background: "white", color: "#1E3A5F80", borderColor: "#bfdbfe" }}>
+              style={gender === g ? { background: "var(--pg-primary)", color: "white", borderColor: "var(--pg-primary)" } : { background: "var(--pg-surface)", color: "var(--pg-text-secondary)", borderColor: "var(--pg-border)" }}>
               {g}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="h-px bg-slate-100" />
+      <div className="h-px bg-slate-100 dark:bg-slate-800" />
 
       {/* Move-in Date */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <svg className="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span className="text-sm font-semibold text-slate-700">Move-in Date</span>
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Move-in Date</span>
         </div>
         <input type="date" value={moveIn} onChange={(e) => setMoveIn(e.target.value)}
-          className="w-full border rounded-xl px-3 py-2 text-sm outline-none transition-all" style={{ background: "#EFF6FF", borderColor: "#bfdbfe", color: "#1E3A5F" }} />
+          className="w-full border rounded-xl px-3 py-2 text-sm outline-none transition-all" style={{ background: "var(--pg-bg)", borderColor: "var(--pg-border)", color: "var(--pg-text)" }} />
       </div>
 
       {/* Apply */}
-      <button onClick={() => setFiltersOpen(false)} className="w-full active:scale-[0.98] text-white font-bold text-sm py-3 rounded-xl transition-all cursor-pointer" style={{ background: "#1D4ED8" }}>
+      <button onClick={() => setFiltersOpen(false)} className="w-full active:scale-[0.98] text-white font-bold text-sm py-3 rounded-xl transition-all cursor-pointer" style={{ background: "var(--pg-primary)" }}>
         Apply Filters
       </button>
     </div>
@@ -358,42 +440,154 @@ function SearchResultsContent() {
         `}</style>
       </Head>
 
-      <div className="min-h-screen flex flex-col" style={{ background: "#EFF6FF", color: "#1E3A5F" }}>
+      <div className="min-h-screen flex flex-col" style={{ background: "var(--pg-bg)", color: "var(--pg-text)" }}>
 
         <Navbar />
 
         {/* ── SEARCH BAR ── */}
-        <div className="bg-white border-b border-blue-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-5 py-3 flex items-center gap-2">
-            <div className="flex-1 max-w-md relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <input type="text" placeholder="Search by name or city..."
-                value={search} onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-[#EFF6FF] border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
+        <div id="main-content" className="bg-white dark:bg-slate-800 border-b border-blue-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-5 py-3">
+            <div className="flex items-stretch gap-2 overflow-x-auto no-scrollbar">
+
+              {/* Location + Near Me */}
+              <div className="relative flex-1 min-w-[220px]">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" placeholder="Around Me"
+                  value={search} onChange={(e) => { setSearch(e.target.value); setNearMeActive(false); }}
+                  className="w-full h-full bg-[var(--pg-bg)] border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-20 py-2 text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
+                <button onClick={handleNearMe} disabled={locating}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer whitespace-nowrap transition-colors disabled:cursor-wait"
+                  style={nearMeActive ? { background: "var(--pg-primary)", color: "white" } : { background: "var(--pg-surface)", color: "var(--pg-primary)" }}>
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  {locating ? "Locating…" : "Near me"}
+                </button>
+              </div>
+
+              {/* Dates */}
+              <div className="relative shrink-0">
+                <button onClick={() => { setDatesOpen((v) => !v); setGuestsOpen(false); setLanguageOpen(false); }}
+                  className="h-full flex items-center gap-2 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap cursor-pointer hover:border-blue-300 transition-colors">
+                  <svg className="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  {formatShortDate(moveIn)} – {formatShortDate(checkOut)}
+                </button>
+                {datesOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setDatesOpen(false)} />
+                    <div ref={datesPopoverRef} className="absolute z-50 top-full mt-2 left-0 bg-white dark:bg-slate-800 border rounded-xl shadow-xl p-4 w-64 space-y-3" style={{ borderColor: "var(--pg-border-soft)" }}>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-500">Move-in</label>
+                        <input type="date" value={moveIn} min={today}
+                          onChange={(e) => { setMoveIn(e.target.value); if (checkOut <= e.target.value) setCheckOut(addDays(e.target.value, 1)); }}
+                          className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1 outline-none" style={{ borderColor: "var(--pg-border)", color: "var(--pg-text)" }} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-500">Move-out (est.)</label>
+                        <input type="date" value={checkOut} min={addDays(moveIn, 1)}
+                          onChange={(e) => setCheckOut(e.target.value)}
+                          className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1 outline-none" style={{ borderColor: "var(--pg-border)", color: "var(--pg-text)" }} />
+                      </div>
+                      <button onClick={() => setDatesOpen(false)} className="w-full text-white text-xs font-bold py-2 rounded-lg cursor-pointer" style={{ background: "var(--pg-primary)" }}>
+                        Done
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Rooms & Guests */}
+              <div className="relative shrink-0">
+                <button onClick={() => { setGuestsOpen((v) => !v); setDatesOpen(false); setLanguageOpen(false); }}
+                  className="h-full flex items-center gap-2 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap cursor-pointer hover:border-blue-300 transition-colors">
+                  <svg className="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  {rooms} Room{rooms > 1 ? "s" : ""}, {guests} Guest{guests > 1 ? "s" : ""}
+                </button>
+                {guestsOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setGuestsOpen(false)} />
+                    <div ref={guestsPopoverRef} className="absolute z-50 top-full mt-2 right-0 bg-white dark:bg-slate-800 border rounded-xl shadow-xl p-4 w-56 space-y-4" style={{ borderColor: "var(--pg-border-soft)" }}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Rooms</span>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => setRooms((r) => Math.max(1, r - 1))} aria-label="Decrease rooms" className="relative w-7 h-7 rounded-full border flex items-center justify-center text-sm font-bold cursor-pointer before:content-[''] before:absolute before:-inset-2" style={{ borderColor: "var(--pg-border)", color: "var(--pg-primary)" }}>−</button>
+                          <span className="text-sm font-bold w-4 text-center">{rooms}</span>
+                          <button onClick={() => setRooms((r) => Math.min(5, r + 1))} aria-label="Increase rooms" className="relative w-7 h-7 rounded-full border flex items-center justify-center text-sm font-bold cursor-pointer before:content-[''] before:absolute before:-inset-2" style={{ borderColor: "var(--pg-border)", color: "var(--pg-primary)" }}>+</button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Guests</span>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => setGuests((g) => Math.max(1, g - 1))} aria-label="Decrease guests" className="relative w-7 h-7 rounded-full border flex items-center justify-center text-sm font-bold cursor-pointer before:content-[''] before:absolute before:-inset-2" style={{ borderColor: "var(--pg-border)", color: "var(--pg-primary)" }}>−</button>
+                          <span className="text-sm font-bold w-4 text-center">{guests}</span>
+                          <button onClick={() => setGuests((g) => Math.min(10, g + 1))} aria-label="Increase guests" className="relative w-7 h-7 rounded-full border flex items-center justify-center text-sm font-bold cursor-pointer before:content-[''] before:absolute before:-inset-2" style={{ borderColor: "var(--pg-border)", color: "var(--pg-primary)" }}>+</button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Search */}
+              <button onClick={() => { setDatesOpen(false); setGuestsOpen(false); setLanguageOpen(false); setPage(1); }}
+                className="shrink-0 flex items-center gap-2 text-white font-bold text-sm px-5 py-2 rounded-xl cursor-pointer transition-all active:scale-[0.98]" style={{ background: "var(--pg-accent)" }}>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Search
+              </button>
+
+              {/* Filters */}
+              <button onClick={() => setFiltersOpen(true)}
+                className="shrink-0 flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold px-3 py-2 rounded-xl cursor-pointer whitespace-nowrap hover:border-blue-300 hover:text-[var(--pg-primary)] transition-colors">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+                </svg>
+                Filters
+                {(budgetActive || roomTypes.length > 0 || amenities.length > 0 || gender !== "Any" || moveIn !== today) && (
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--pg-primary)" }} />
+                )}
+              </button>
+
+              {/* Language */}
+              <div className="relative shrink-0">
+                <button onClick={() => { setLanguageOpen((v) => !v); setDatesOpen(false); setGuestsOpen(false); }}
+                  className="h-full flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer hover:border-blue-300 transition-colors">
+                  {language}
+                  <svg className="w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                {languageOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setLanguageOpen(false)} />
+                    <div ref={languagePopoverRef} className="absolute z-50 top-full mt-2 right-0 bg-white dark:bg-slate-800 border rounded-xl shadow-xl py-1 w-24" style={{ borderColor: "var(--pg-border-soft)" }}>
+                      {LANGUAGES.map((l) => (
+                        <button key={l} onClick={() => { setLanguage(l); setLanguageOpen(false); }}
+                          className="w-full text-left px-3 py-1.5 text-sm cursor-pointer hover:bg-blue-50"
+                          style={l === language ? { color: "var(--pg-primary)", fontWeight: 700 } : { color: "var(--pg-text)" }}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-            <button onClick={() => setFiltersOpen(true)}
-              className="sm:hidden flex items-center gap-1.5 border border-slate-200 bg-white text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl cursor-pointer whitespace-nowrap">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
-              </svg>
-              Filters
-            </button>
+            {geoError && <p className="text-xs text-red-500 mt-2">{geoError}</p>}
           </div>
         </div>
 
         {/* ── BODY ── */}
         <div className="flex flex-1 max-w-7xl mx-auto w-full px-4 sm:px-5 py-6 gap-7">
 
-          {/* ── DESKTOP SIDEBAR ── */}
-          <aside className="hidden md:block w-52 lg:w-56 shrink-0">
-            <div className="sticky top-20">
-              <FilterSidebar />
-            </div>
-          </aside>
-
-          {/* ── MOBILE FILTER DRAWER ── */}
+          {/* ── FILTER DRAWER ── */}
           <AnimatePresence>
             {filtersOpen && (
               <>
@@ -401,12 +595,13 @@ function SearchResultsContent() {
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   className="fixed inset-0 z-50 bg-black/40" onClick={() => setFiltersOpen(false)} />
                 <motion.div
+                  ref={filtersDrawerRef}
                   initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
                   transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  className="fixed inset-y-0 left-0 z-50 w-72 bg-white overflow-y-auto p-5 shadow-xl">
+                  className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-800 overflow-y-auto p-5 shadow-xl">
                   <div className="flex items-center justify-between mb-5">
-                    <span className="text-base font-bold text-[#1E3A5F]">Filters</span>
-                    <button onClick={() => setFiltersOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <span className="text-base font-bold text-[var(--pg-text)]">Filters</span>
+                    <button onClick={() => setFiltersOpen(false)} aria-label="Close filters" className="p-3 text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 cursor-pointer">
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                       </svg>
@@ -424,17 +619,17 @@ function SearchResultsContent() {
             {/* Results header */}
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F] tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-bold text-[var(--pg-text)] tracking-tight">
                   Found {filtered.length} PGs in {qLocation}
                 </h1>
                 <p className="text-sm text-slate-500 mt-1">Curated living spaces for the modern student.</p>
               </div>
               {/* Sort */}
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Sort By</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Sort By</span>
                 <div className="relative">
                   <select value={sort} onChange={(e) => setSort(e.target.value)}
-                    className="appearance-none bg-white border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 cursor-pointer">
+                    className="appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-3 pr-8 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-blue-400 cursor-pointer">
                     {SORT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                   </select>
                   <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -446,9 +641,9 @@ function SearchResultsContent() {
 
             {/* ── PROPERTY GRID ── */}
             {loading && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
                 {[1, 2, 3, 4].map((item) => (
-                  <div key={item} className="pg-skeleton h-[430px] rounded-2xl border border-slate-200" />
+                  <div key={item} className="pg-skeleton h-[430px] rounded-2xl border border-slate-200 dark:border-slate-700" />
                 ))}
               </div>
             )}
@@ -460,15 +655,15 @@ function SearchResultsContent() {
             )}
 
             {!loading && !error && (
-              <Stagger className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6" staggerChildren={0.07}>
+              <Stagger key={safePage} triggerOnMount className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6" staggerChildren={0.07}>
               {paginated.map((p) => (
                 <StaggerItem key={p.id}>
-                <motion.div whileHover={{ y: -6 }} transition={{ duration: 0.25 }} className="bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer border h-full"
-                  style={{ borderColor: "#e0f2fe" }}
+                <motion.div whileHover={{ y: -6 }} transition={{ duration: 0.25 }} className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer border h-full"
+                  style={{ borderColor: "var(--pg-border-soft)" }}
                   onClick={() => router.push(`/property/${p.id}`)}>
 
                   {/* Image */}
-                  <div className="relative aspect-[16/10] overflow-hidden bg-[#EFF6FF] group">
+                  <div className="relative aspect-[16/10] overflow-hidden bg-[var(--pg-bg)] group">
                     <img src={p.image} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }} />
 
                     {/* Badge top-left */}
@@ -494,7 +689,9 @@ function SearchResultsContent() {
                     <motion.button
                       whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}
                       onClick={(e) => toggleWishlist(e, p.id)}
-                      className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md cursor-pointer"
+                      aria-label={wishlist.includes(p.id) ? "Remove from wishlist" : "Add to wishlist"}
+                      aria-pressed={wishlist.includes(p.id)}
+                      className="absolute top-3 right-3 w-11 h-11 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-md cursor-pointer"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24"
                         fill={wishlist.includes(p.id) ? "#ef4444" : "none"}
@@ -509,7 +706,7 @@ function SearchResultsContent() {
                   <div className="p-4">
                     {/* Name + rating */}
                     <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <h3 className="font-bold text-base leading-snug" style={{ color: "#1E3A5F" }}>{p.name}</h3>
+                      <h3 className="font-bold text-base leading-snug" style={{ color: "var(--pg-text)" }}>{p.name}</h3>
                       {p.isNew ? (
                         <span className="flex items-center gap-1 text-xs font-bold text-blue-500 whitespace-nowrap shrink-0">
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -518,8 +715,8 @@ function SearchResultsContent() {
                           (New)
                         </span>
                       ) : p.rating ? (
-                        <span className="flex items-center gap-1 text-xs font-bold whitespace-nowrap shrink-0" style={{ color: "#1E3A5F" }}>
-                          <span style={{ color: "#F97316" }}>★</span> {p.rating}
+                        <span className="flex items-center gap-1 text-xs font-bold whitespace-nowrap shrink-0" style={{ color: "var(--pg-text)" }}>
+                          <span style={{ color: "var(--pg-accent)" }}>★</span> {p.rating}
                         </span>
                       ) : null}
                     </div>
@@ -529,13 +726,13 @@ function SearchResultsContent() {
                       <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                       </svg>
-                      {p.location}{p.distance ? ` • ${p.distance}` : ""}
+                      {p.location}{p.distance ? ` • ${p.distance}` : ""}{p.distanceKm != null ? ` • ${p.distanceKm.toFixed(1)} km away` : ""}
                     </p>
 
                     {/* Amenity pills */}
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {p.amenities.map((a, i) => (
-                        <span key={a} className="flex items-center gap-1 text-[11px] text-slate-600 bg-[#EFF6FF] px-2 py-1 rounded-full">
+                        <span key={a} className="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-400 bg-[var(--pg-bg)] px-2 py-1 rounded-full">
                           {p.amenityIcons[i] && AMENITY_ICONS[p.amenityIcons[i]]}
                           {a}
                         </span>
@@ -545,13 +742,13 @@ function SearchResultsContent() {
                     {/* Price + CTA */}
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <span className="text-xl font-bold" style={{ color: "#1E3A5F" }}>{formatCurrency(p.price)}</span>
-                        <span className="text-xs font-normal" style={{ color: "#1E3A5F80" }}> /month</span>
+                        <span className="text-xl font-bold" style={{ color: "var(--pg-text)" }}>{formatCurrency(p.price)}</span>
+                        <span className="text-xs font-normal" style={{ color: "var(--pg-text-secondary)" }}> /month</span>
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); router.push(`/property/${p.id}`); }}
                         className="text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap border hover:bg-blue-50"
-                        style={{ borderColor: "#bfdbfe", color: "#1D4ED8" }}
+                        style={{ borderColor: "var(--pg-border)", color: "var(--pg-primary)" }}
                       >
                         View Details
                       </button>
@@ -568,10 +765,10 @@ function SearchResultsContent() {
                 <svg className="w-12 h-12 text-slate-300 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
-                <p className="text-lg font-bold text-slate-400">No PGs match your filters</p>
-                <p className="text-sm text-slate-400 mt-1">Try adjusting your budget or room type.</p>
+                <p className="text-lg font-bold text-slate-500">No PGs match your filters</p>
+                <p className="text-sm text-slate-500 mt-1">Try adjusting your budget or room type.</p>
                 <button onClick={() => { setRoomTypes([]); setAmenities([]); setBudgetActive(false); setBudgetMin(0); setBudgetMax(50000); setGender("Any"); setSearch(""); setPage(1); }}
-                  className="mt-4 text-sm font-semibold cursor-pointer" style={{ color: "#1D4ED8" }}>
+                  className="mt-4 text-sm font-semibold cursor-pointer" style={{ color: "var(--pg-primary)" }}>
                   Clear all filters
                 </button>
               </div>
@@ -584,7 +781,7 @@ function SearchResultsContent() {
                   <button
                     onClick={() => setPage((current) => Math.max(1, current - 1))}
                     disabled={safePage === 1}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:text-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all hover:border-blue-300 hover:text-[var(--pg-primary)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="15 18 9 12 15 6" />
@@ -599,12 +796,12 @@ function SearchResultsContent() {
                           key={p}
                           onClick={() => setPage(p)}
                           className="w-9 h-9 flex items-center justify-center rounded-full text-sm font-semibold transition-all cursor-pointer"
-                          style={p === safePage ? { background: "#1D4ED8", color: "white" } : { color: "#1E3A5F80" }}
+                          style={p === safePage ? { background: "var(--pg-primary)", color: "white" } : { color: "var(--pg-text-secondary)" }}
                         >
                           {p}
                         </button>
                       ) : (
-                        <span key={`dots-${i}`} className="px-1 text-slate-400 text-sm">...</span>
+                        <span key={`dots-${i}`} className="px-1 text-slate-500 text-sm">...</span>
                       )
                     ))}
                   </div>
@@ -612,7 +809,7 @@ function SearchResultsContent() {
                   <button
                     onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                     disabled={safePage === totalPages}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:text-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all hover:border-blue-300 hover:text-[var(--pg-primary)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Next
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -621,7 +818,7 @@ function SearchResultsContent() {
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500">
                   Showing {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filtered.length)} of {filtered.length} results
                 </p>
               </div>

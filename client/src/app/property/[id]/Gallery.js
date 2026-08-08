@@ -6,7 +6,7 @@ export default function Gallery({ images, name }) {
   const [active, setActive] = useState(0);
 
   return (
-    <div className="bg-[#EFF6FF]">
+    <div className="bg-[var(--pg-bg)]">
       <div className="relative h-[320px] w-full overflow-hidden sm:h-[420px]">
         <AnimatePresence mode="wait">
           <motion.img
@@ -30,7 +30,7 @@ export default function Gallery({ images, name }) {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
               className="h-20 w-full overflow-hidden rounded-xl border-2 cursor-pointer"
-              style={{ borderColor: active === index ? "#1D4ED8" : "transparent" }}
+              style={{ borderColor: active === index ? "var(--pg-primary)" : "transparent" }}
             >
               <img src={image} alt={`${name} image ${index + 1}`} className="h-full w-full object-cover" />
             </motion.button>

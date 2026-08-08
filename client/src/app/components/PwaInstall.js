@@ -40,25 +40,25 @@ export default function PwaInstall() {
   if (!deferredPrompt && !isIOS) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-50 rounded-2xl shadow-xl border p-4 bg-white" style={{ borderColor: "#bfdbfe" }}>
+    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-50 rounded-2xl shadow-xl border p-4 bg-white dark:bg-slate-800" style={{ borderColor: "var(--pg-border)" }}>
       <div className="flex items-start gap-3">
         <img src="/icon-192x192.png" alt="PG Connect" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="flex-1">
-          <p className="text-sm font-bold" style={{ color: "#1E3A5F" }}>Install PG Connect</p>
+          <p className="text-sm font-bold" style={{ color: "var(--pg-text)" }}>Install PG Connect</p>
           {deferredPrompt ? (
-            <p className="text-xs mt-0.5" style={{ color: "#1E3A5F80" }}>Add the app to your home screen for a faster, app-like experience.</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--pg-text-secondary)" }}>Add the app to your home screen for a faster, app-like experience.</p>
           ) : (
-            <p className="text-xs mt-0.5" style={{ color: "#1E3A5F80" }}>
+            <p className="text-xs mt-0.5" style={{ color: "var(--pg-text-secondary)" }}>
               Tap the Share icon, then &quot;Add to Home Screen&quot; to install.
             </p>
           )}
           <div className="flex gap-2 mt-3">
             {deferredPrompt && (
-              <button onClick={install} className="text-xs font-bold text-white px-3 py-1.5 rounded-lg cursor-pointer" style={{ background: "#1D4ED8" }}>
+              <button onClick={install} className="text-xs font-bold text-white px-3 py-1.5 rounded-lg cursor-pointer" style={{ background: "var(--pg-primary)" }}>
                 Install
               </button>
             )}
-            <button onClick={dismiss} className="text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer" style={{ color: "#1E3A5F80" }}>
+            <button onClick={dismiss} className="text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer" style={{ color: "var(--pg-text-secondary)" }}>
               Not now
             </button>
           </div>

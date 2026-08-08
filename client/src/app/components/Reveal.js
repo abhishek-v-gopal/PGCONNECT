@@ -35,17 +35,32 @@ export default function Reveal({
   );
 }
 
-export function Stagger({ children, className = "", delayChildren = 0, staggerChildren = 0.08, once = true, amount = 0.2 }) {
+// By default the stagger reveals when scrolled into view (good for static
+// page sections). Pass triggerOnMount for content that swaps in via state
+// (e.g. pagination) rather than scrolling — whileInView only fires once per
+// viewport entry, so newly-mounted children after that point never get
+// animated in and stay stuck invisible.
+export function Stagger({ children, className = "", delayChildren = 0, staggerChildren = 0.08, once = true, amount = 0.2, triggerOnMount = false }) {
+  const variants = {
+    hidden: {},
+    show: { transition: { staggerChildren, delayChildren } },
+  };
+
+  if (triggerOnMount) {
+    return (
+      <motion.div className={className} initial="hidden" animate="show" variants={variants}>
+        {children}
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       className={className}
       initial="hidden"
       whileInView="show"
       viewport={{ once, amount }}
-      variants={{
-        hidden: {},
-        show: { transition: { staggerChildren, delayChildren } },
-      }}
+      variants={variants}
     >
       {children}
     </motion.div>

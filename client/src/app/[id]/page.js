@@ -203,10 +203,10 @@ export default function PropertyDetail() {
         `}</style>
       </Head>
 
-      <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 overflow-x-hidden">
 
         {/* ── NAVBAR ── */}
-        <nav className="sticky top-0 z-50 bg-white border-b border-slate-200">
+        <nav className="sticky top-0 z-50 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 h-14 sm:h-16 flex items-center justify-between gap-4">
             <button onClick={() => router.push("/")} className="font-serif-display text-blue-600 text-lg sm:text-xl shrink-0 cursor-pointer">
               PG Connect
@@ -218,7 +218,7 @@ export default function PropertyDetail() {
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <button className="text-sm font-semibold text-blue-600 hover:opacity-75 transition-opacity">Sign In</button>
-              <button className="md:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" onClick={() => setMenuOpen(!menuOpen)}>
+              <button className="md:hidden p-3 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">
                 {menuOpen ? (
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -232,7 +232,7 @@ export default function PropertyDetail() {
             </div>
           </div>
           {menuOpen && (
-            <div className="md:hidden border-t border-slate-100 bg-white px-5 py-4 flex flex-col gap-4">
+            <div className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 px-5 py-4 flex flex-col gap-4">
               <button onClick={() => router.push("/")} className="text-sm font-semibold text-blue-600 text-left">Properties</button>
               <a href="#" className="text-sm font-medium text-slate-500">Locations</a>
               <a href="#" className="text-sm font-medium text-slate-500">About</a>
@@ -242,15 +242,15 @@ export default function PropertyDetail() {
 
         {/* ── BREADCRUMB ── */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-4 sm:pt-5">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <button onClick={() => router.push("/")} className="hover:text-blue-600 transition-colors cursor-pointer">Home</button>
             <span>/</span>
-            <span className="text-slate-600 font-medium truncate">{property.name}</span>
+            <span className="text-slate-600 dark:text-slate-400 font-medium truncate">{property.name}</span>
           </div>
         </div>
 
         {/* ── MAIN CONTENT ── */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 sm:py-7">
+        <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 sm:py-7">
 
           {/* ── HEADER ── */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
@@ -260,13 +260,13 @@ export default function PropertyDetail() {
                   Available Now
                 </span>
                 <span className="flex items-center gap-1.5 text-sm text-slate-500">
-                  <svg className="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg className="w-4 h-4 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                   </svg>
                   {property.location}
                 </span>
               </div>
-              <h1 className="font-serif-display text-3xl sm:text-4xl lg:text-5xl text-slate-900 leading-tight">
+              <h1 className="font-serif-display text-3xl sm:text-4xl lg:text-5xl text-slate-900 dark:text-slate-100 leading-tight">
                 {property.name}
               </h1>
               <p className="mt-2 text-slate-500 text-sm sm:text-base max-w-xl leading-relaxed">{property.tagline}</p>
@@ -321,17 +321,17 @@ export default function PropertyDetail() {
 
               {/* Amenities */}
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-5 flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
                   <span className="w-1 h-6 bg-blue-600 rounded-full inline-block"></span>
                   Premier Amenities
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {property.amenities.map((a) => (
-                    <div key={a} className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-start gap-3 hover:border-blue-200 hover:shadow-sm transition-all">
+                    <div key={a} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-start gap-3 hover:border-blue-200 hover:shadow-sm transition-all">
                       {amenityIcons[a] ?? (
                         <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /></svg>
                       )}
-                      <span className="text-xs sm:text-sm font-medium text-slate-700 leading-tight">{a}</span>
+                      <span className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-tight">{a}</span>
                     </div>
                   ))}
                 </div>
@@ -339,22 +339,22 @@ export default function PropertyDetail() {
 
               {/* Room Configurations */}
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-5 flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
                   <span className="w-1 h-6 bg-blue-600 rounded-full inline-block"></span>
                   Room Configurations
                 </h2>
                 <div className="space-y-3">
                   {property.rooms.map((r) => (
                     <div key={r.type}
-                      className={`bg-white border rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all
-                        ${r.available ? "border-slate-200 hover:border-blue-200 hover:shadow-sm" : "border-slate-100 opacity-60"}`}
+                      className={`bg-white dark:bg-slate-800 border rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all
+                        ${r.available ? "border-slate-200 dark:border-slate-700 hover:border-blue-200 hover:shadow-sm" : "border-slate-100 dark:border-slate-800 opacity-60"}`}
                     >
                       <div className="flex-1">
-                        <p className={`font-semibold text-sm sm:text-base ${!r.available ? "text-slate-400" : "text-slate-900"}`}>{r.type}</p>
+                        <p className={`font-semibold text-sm sm:text-base ${!r.available ? "text-slate-500" : "text-slate-900 dark:text-slate-100"}`}>{r.type}</p>
                         <p className={`text-xs sm:text-sm mt-0.5 ${!r.available ? "text-slate-300" : "text-slate-500"}`}>{r.desc}</p>
                       </div>
                       <div className="flex items-center gap-4 sm:flex-col sm:items-end sm:gap-1">
-                        <span className={`text-base sm:text-lg font-bold ${!r.available ? "text-slate-400" : "text-slate-900"}`}>
+                        <span className={`text-base sm:text-lg font-bold ${!r.available ? "text-slate-500" : "text-slate-900 dark:text-slate-100"}`}>
                           ₹{r.price.toLocaleString("en-IN")}
                         </span>
                         <span className={`text-[10px] font-bold uppercase tracking-wide ${r.available ? "text-blue-600" : "text-red-500"}`}>
@@ -368,25 +368,25 @@ export default function PropertyDetail() {
 
               {/* Neighborhood */}
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-5 flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
                   <span className="w-1 h-6 bg-blue-600 rounded-full inline-block"></span>
                   The Neighborhood
                 </h2>
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                  <div className="relative w-full h-56 sm:h-72 bg-slate-100 flex items-center justify-center">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+                  <div className="relative w-full h-56 sm:h-72 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <div className="absolute inset-0 opacity-20" style={{
                       backgroundImage: `linear-gradient(rgba(37,99,235,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.3) 1px, transparent 1px)`,
                       backgroundSize: "40px 40px",
                     }} />
                     <div className="absolute inset-0 bg-gradient-to-b from-slate-100/0 to-slate-100/60" />
-                    <div className="relative bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 border border-slate-200">
+                    <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 border border-slate-200 dark:border-slate-700">
                       <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
                         <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900">{property.name}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{property.name}</p>
                         <p className="text-xs text-slate-500">{property.mapLabel}</p>
                       </div>
                     </div>
@@ -396,7 +396,7 @@ export default function PropertyDetail() {
 
               {/* Other properties */}
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-5 flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 mb-5 flex items-center gap-2">
                   <span className="w-1 h-6 bg-blue-600 rounded-full inline-block"></span>
                   Other Properties You May Like
                 </h2>
@@ -405,15 +405,15 @@ export default function PropertyDetail() {
                     <div
                       key={p.id}
                       onClick={() => router.push(`/property/${p.id}`)}
-                      className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group"
+                      className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group"
                     >
                       <div className="aspect-[4/3] overflow-hidden">
                         <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400" />
                       </div>
                       <div className="p-3">
-                        <p className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{p.name}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 transition-colors">{p.name}</p>
                         <p className="text-xs text-slate-500 mt-0.5">{p.location}</p>
-                        <p className="text-sm font-bold text-slate-900 mt-2">₹{p.price.toLocaleString("en-IN")}<span className="text-xs font-normal text-slate-400"> /bed</span></p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-2">₹{p.price.toLocaleString("en-IN")}<span className="text-xs font-normal text-slate-500"> /bed</span></p>
                       </div>
                     </div>
                   ))}
@@ -427,34 +427,34 @@ export default function PropertyDetail() {
               <div className="lg:sticky lg:top-24 space-y-4">
 
                 {/* Inquiry Form */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-slate-900 mb-5">Send Inquiry</h3>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 shadow-sm">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-5">Send Inquiry</h3>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Full Name</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Full Name</label>
                       <input type="text" placeholder="John Doe" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
+                        className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Phone Number</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Phone Number</label>
                       <input type="tel" placeholder="+91 98765 43210" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
+                        className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Preferred Move-In</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Preferred Move-In</label>
                       <input type="date" value={form.moveIn} onChange={(e) => setForm({ ...form, moveIn: e.target.value })}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
+                        className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
                     </div>
                     <button type="submit"
                       className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all text-white font-semibold text-sm py-3 rounded-xl cursor-pointer">
                       {inquirySent ? "✓ Inquiry Sent!" : "Send Inquiry"}
                     </button>
-                    <p className="text-center text-[11px] text-slate-400 uppercase tracking-wider">Average response time: 30 minutes</p>
+                    <p className="text-center text-[11px] text-slate-500 uppercase tracking-wider">Average response time: 30 minutes</p>
                   </form>
                 </div>
 
                 {/* Manager Card */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                       <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -462,12 +462,12 @@ export default function PropertyDetail() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{property.manager.name}</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{property.manager.name}</p>
                       <p className="text-xs text-slate-500">{property.manager.role}</p>
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <button className="flex-1 flex items-center justify-center gap-2 border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 text-sm font-semibold py-2.5 rounded-xl transition-all cursor-pointer">
+                    <button className="flex-1 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-blue-50 text-slate-700 dark:text-slate-300 text-sm font-semibold py-2.5 rounded-xl transition-all cursor-pointer">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.87h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.5a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 18z" />
                       </svg>
@@ -480,7 +480,7 @@ export default function PropertyDetail() {
                       WhatsApp
                     </button>
                   </div>
-                  <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 border-t border-slate-100 pt-4">
+                  <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 border-t border-slate-100 dark:border-slate-800 pt-4">
                     <svg className="w-4 h-4 text-green-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
                     </svg>
@@ -494,7 +494,7 @@ export default function PropertyDetail() {
         </main>
 
         {/* ── MOBILE STICKY BOTTOM BAR ── */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-4 py-3 flex items-center gap-3 shadow-lg">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-3 shadow-lg">
           <div className="flex-1">
             <p className="text-xs text-slate-500">Starting from</p>
             <p className="text-lg font-bold text-blue-600">
@@ -513,11 +513,11 @@ export default function PropertyDetail() {
         <div className="lg:hidden h-20" />
 
         {/* ── FOOTER ── */}
-        <footer className="bg-white border-t border-slate-200">
+        <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-5 sm:py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <p className="font-serif-display text-base text-slate-900">PG Connect</p>
-              <p className="text-xs text-slate-400 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
+              <p className="font-serif-display text-base text-slate-900 dark:text-slate-100">PG Connect</p>
+              <p className="text-xs text-slate-500 mt-0.5">© 2024 PG Connect. Curated Student Living.</p>
             </div>
             <div className="flex flex-wrap gap-4 sm:gap-6">
               {["Privacy Policy", "Terms of Service", "Help Center", "Contact Us"].map((link) => (

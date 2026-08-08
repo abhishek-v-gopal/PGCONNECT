@@ -20,14 +20,14 @@ export default function HowItWorksPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#EFF6FF", color: "#1E3A5F" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--pg-bg)", color: "var(--pg-text)" }}>
       <Navbar />
 
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <section className="max-w-5xl mx-auto px-4 sm:px-6 py-14 sm:py-20 text-center">
           <Reveal>
-            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight" style={{ color: "#1E3A5F" }}>How PG Connect Works</h1>
-            <p className="mt-4 text-base sm:text-lg max-w-xl mx-auto" style={{ color: "#1E3A5F80" }}>
+            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight" style={{ color: "var(--pg-text)" }}>How PG Connect Works</h1>
+            <p className="mt-4 text-base sm:text-lg max-w-xl mx-auto" style={{ color: "var(--pg-text-secondary)" }}>
               A transparent marketplace for verified PG accommodation in Kerala — for students, owners, and everyone in between.
             </p>
           </Reveal>
@@ -36,14 +36,14 @@ export default function HowItWorksPage() {
         {/* For Students */}
         <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-14 sm:pb-20">
           <Reveal>
-            <h2 className="text-2xl font-bold mb-8" style={{ color: "#1E3A5F" }}>For Students</h2>
+            <h2 className="text-2xl font-bold mb-8" style={{ color: "var(--pg-text)" }}>For Students</h2>
           </Reveal>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {STUDENT_STEPS.map((s) => (
-              <Reveal key={s.n} delay={s.n * 0.08} className="bg-white rounded-2xl border p-6 shadow-sm" >
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold mb-4" style={{ background: "#1D4ED8" }}>{s.n}</div>
-                <p className="font-bold mb-1" style={{ color: "#1E3A5F" }}>{s.title}</p>
-                <p className="text-sm leading-relaxed" style={{ color: "#1E3A5F80" }}>{s.desc}</p>
+              <Reveal key={s.n} delay={s.n * 0.08} className="bg-white dark:bg-slate-800 rounded-2xl border p-6 shadow-sm" >
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold mb-4" style={{ background: "var(--pg-primary)" }}>{s.n}</div>
+                <p className="font-bold mb-1" style={{ color: "var(--pg-text)" }}>{s.title}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--pg-text-secondary)" }}>{s.desc}</p>
               </Reveal>
             ))}
           </div>
@@ -52,25 +52,25 @@ export default function HowItWorksPage() {
         {/* For Owners */}
         <section id="owners" className="scroll-mt-20 max-w-5xl mx-auto px-4 sm:px-6 pb-14 sm:pb-20">
           <Reveal>
-            <h2 className="text-2xl font-bold mb-8" style={{ color: "#1E3A5F" }}>For Owners</h2>
+            <h2 className="text-2xl font-bold mb-8" style={{ color: "var(--pg-text)" }}>For Owners</h2>
           </Reveal>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {OWNER_STEPS.map((s) => (
-              <Reveal key={s.n} delay={s.n * 0.08} className="bg-white rounded-2xl border p-6 shadow-sm">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold mb-4" style={{ background: "#F97316" }}>{s.n}</div>
-                <p className="font-bold mb-1" style={{ color: "#1E3A5F" }}>{s.title}</p>
-                <p className="text-sm leading-relaxed" style={{ color: "#1E3A5F80" }}>{s.desc}</p>
+              <Reveal key={s.n} delay={s.n * 0.08} className="bg-white dark:bg-slate-800 rounded-2xl border p-6 shadow-sm">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold mb-4" style={{ background: "var(--pg-accent)" }}>{s.n}</div>
+                <p className="font-bold mb-1" style={{ color: "var(--pg-text)" }}>{s.title}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--pg-text-secondary)" }}>{s.desc}</p>
               </Reveal>
             ))}
           </div>
         </section>
 
         {/* Verification */}
-        <section id="verification" className="scroll-mt-20 py-14 sm:py-20" style={{ background: "white" }}>
+        <section id="verification" className="scroll-mt-20 py-14 sm:py-20" style={{ background: "var(--pg-surface)" }}>
           <div className="max-w-3xl mx-auto px-4 sm:px-6">
             <Reveal>
-              <h2 className="text-2xl font-bold mb-4" style={{ color: "#1E3A5F" }}>Verification Process</h2>
-              <div className="space-y-4 text-sm leading-relaxed" style={{ color: "#1E3A5F99" }}>
+              <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--pg-text)" }}>Verification Process</h2>
+              <div className="space-y-4 text-sm leading-relaxed" style={{ color: "var(--pg-text-secondary)" }}>
                 <p>Every property submitted to PG Connect goes through admin review before it appears in search results. This keeps the marketplace trustworthy for students who are often choosing a place to live sight-unseen.</p>
                 <p>Here's what happens after you submit a listing:</p>
               </div>
@@ -80,8 +80,8 @@ export default function HowItWorksPage() {
                   "Team review — we check that details, pricing, and photos are complete and consistent (typically within 48 hours).",
                   "Verified & published — approved listings get a Verified badge and go live to students searching your area.",
                 ].map((step, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm" style={{ color: "#1E3A5F" }}>
-                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5" style={{ background: "#1D4ED8" }}>{i + 1}</span>
+                  <li key={i} className="flex items-start gap-3 text-sm" style={{ color: "var(--pg-text)" }}>
+                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5" style={{ background: "var(--pg-primary)" }}>{i + 1}</span>
                     {step}
                   </li>
                 ))}
@@ -94,53 +94,53 @@ export default function HowItWorksPage() {
         <section id="pricing" className="scroll-mt-20 py-14 sm:py-20">
           <div className="max-w-3xl mx-auto px-4 sm:px-6">
             <Reveal>
-              <h2 className="text-2xl font-bold mb-4" style={{ color: "#1E3A5F" }}>Pricing & Commission</h2>
-              <p className="text-sm leading-relaxed mb-6" style={{ color: "#1E3A5F99" }}>
+              <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--pg-text)" }}>Pricing & Commission</h2>
+              <p className="text-sm leading-relaxed mb-6" style={{ color: "var(--pg-text-secondary)" }}>
                 PG Connect charges a 5% platform fee on each rent payment collected through the platform. There's no separate listing fee — you only pay when you actually get paid.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor: "#e0f2fe" }}>
-                  <p className="text-2xl font-bold" style={{ color: "#1E3A5F" }}>95%</p>
-                  <p className="text-xs mt-1" style={{ color: "#1E3A5F80" }}>Paid to you as the owner</p>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border p-5 shadow-sm" style={{ borderColor: "var(--pg-border-soft)" }}>
+                  <p className="text-2xl font-bold" style={{ color: "var(--pg-text)" }}>95%</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--pg-text-secondary)" }}>Paid to you as the owner</p>
                 </div>
-                <div className="bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor: "#e0f2fe" }}>
-                  <p className="text-2xl font-bold" style={{ color: "#F97316" }}>2%</p>
-                  <p className="text-xs mt-1" style={{ color: "#1E3A5F80" }}>To the referring student, if the listing was referred</p>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border p-5 shadow-sm" style={{ borderColor: "var(--pg-border-soft)" }}>
+                  <p className="text-2xl font-bold" style={{ color: "var(--pg-accent)" }}>2%</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--pg-text-secondary)" }}>To the referring student, if the listing was referred</p>
                 </div>
-                <div className="bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor: "#e0f2fe" }}>
-                  <p className="text-2xl font-bold" style={{ color: "#1D4ED8" }}>3%</p>
-                  <p className="text-xs mt-1" style={{ color: "#1E3A5F80" }}>Platform fee to PG Connect</p>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border p-5 shadow-sm" style={{ borderColor: "var(--pg-border-soft)" }}>
+                  <p className="text-2xl font-bold" style={{ color: "var(--pg-primary)" }}>3%</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--pg-text-secondary)" }}>Platform fee to PG Connect</p>
                 </div>
               </div>
-              <p className="text-xs mt-4" style={{ color: "#1E3A5F60" }}>Listings that weren't referred by a student keep the full 2% as part of the platform fee instead.</p>
+              <p className="text-xs mt-4" style={{ color: "var(--pg-text-tertiary)" }}>Listings that weren't referred by a student keep the full 2% as part of the platform fee instead.</p>
             </Reveal>
           </div>
         </section>
 
         {/* Referral Program */}
-        <section id="referral" className="scroll-mt-20 py-14 sm:py-20" style={{ background: "white" }}>
+        <section id="referral" className="scroll-mt-20 py-14 sm:py-20" style={{ background: "var(--pg-surface)" }}>
           <div className="max-w-3xl mx-auto px-4 sm:px-6">
             <Reveal>
-              <h2 className="text-2xl font-bold mb-4" style={{ color: "#1E3A5F" }}>Referral Program</h2>
-              <div className="space-y-3 text-sm leading-relaxed" style={{ color: "#1E3A5F99" }}>
+              <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--pg-text)" }}>Referral Program</h2>
+              <div className="space-y-3 text-sm leading-relaxed" style={{ color: "var(--pg-text-secondary)" }}>
                 <p>Every student account comes with a unique 8-character referral code. Share it with a PG owner you know — when they list their property using your code and start receiving rent payments through PG Connect, you earn commission automatically.</p>
                 <p>You can choose between two commission types when you sign up:</p>
               </div>
-              <ul className="mt-4 space-y-2 text-sm" style={{ color: "#1E3A5F" }}>
+              <ul className="mt-4 space-y-2 text-sm" style={{ color: "var(--pg-text)" }}>
                 <li className="flex items-start gap-2">
-                  <span style={{ color: "#1D4ED8" }}>●</span>
+                  <span style={{ color: "var(--pg-primary)" }}>●</span>
                   <span><strong>Recurring</strong> — earn 2% every month for as long as the tenant keeps paying rent through the platform.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span style={{ color: "#1D4ED8" }}>●</span>
+                  <span style={{ color: "var(--pg-primary)" }}>●</span>
                   <span><strong>One-time</strong> — earn a larger share on the first booking only, then it's done.</span>
                 </li>
               </ul>
-              <p className="text-sm mt-4" style={{ color: "#1E3A5F99" }}>Commission is credited to your account balance. Once you cross the ₹100 minimum, you can request a payout.</p>
+              <p className="text-sm mt-4" style={{ color: "var(--pg-text-secondary)" }}>Commission is credited to your account balance. Once you cross the ₹100 minimum, you can request a payout.</p>
               <button
                 onClick={() => router.push("/register?role=student")}
                 className="mt-6 inline-block text-sm font-bold px-6 py-3 rounded-xl text-white cursor-pointer"
-                style={{ background: "#F97316" }}
+                style={{ background: "var(--pg-accent)" }}
               >
                 Start Earning
               </button>

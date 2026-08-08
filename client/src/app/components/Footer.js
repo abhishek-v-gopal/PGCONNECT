@@ -24,7 +24,7 @@ const SUPPORT_LINKS = [
 export default function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer style={{ background: "#1E3A5F" }} className="text-white">
+    <footer style={{ background: "var(--pg-cta-bg)" }} className="text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
           {/* Brand */}

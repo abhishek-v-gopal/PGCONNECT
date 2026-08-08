@@ -9,6 +9,7 @@ import { bookingsRouter } from './routes/bookings'
 import { adminRouter } from './routes/admin'
 import { inquiriesRouter } from './routes/inquiries'
 import { referralRouter } from './routes/referral'
+import { agentRouter } from './routes/agent'
 import { paymentsRouter } from './routes/payments'
 import { reviewsRouter } from './routes/reviews'
 import type { Env } from './types'
@@ -38,6 +39,7 @@ app.route('/api/bookings', bookingsRouter)
 app.route('/api/admin', adminRouter)
 app.route('/api/inquiries', inquiriesRouter)
 app.route('/api/referral', referralRouter)
+app.route('/api/agent', agentRouter)
 app.route('/api/payments', paymentsRouter)
 app.route('/api/reviews', reviewsRouter)
 

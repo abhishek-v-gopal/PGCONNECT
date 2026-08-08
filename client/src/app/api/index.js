@@ -169,6 +169,23 @@ export const requestPayout = async () => {
   return authFetch('/api/referral/request-payout', { method: 'POST' })
 }
 
+// ── AGENT ─────────────────────────────────────────────────────────────────────
+export const getAgentCode = async () => {
+  return authFetch('/api/agent/my-code')
+}
+
+export const getAgentStats = async () => {
+  return authFetch('/api/agent/stats')
+}
+
+export const getAgentCommissions = async (page = 1) => {
+  return authFetch(`/api/agent/commissions?page=${page}`)
+}
+
+export const requestAgentPayout = async () => {
+  return authFetch('/api/agent/request-payout', { method: 'POST' })
+}
+
 // ── PAYMENTS ──────────────────────────────────────────────────────────────────
 export const createPaymentOrder = async (booking_id) => {
   return authFetch('/api/payments/create-order', { method: 'POST', body: JSON.stringify({ booking_id }) })
@@ -241,6 +258,13 @@ export const getAdminReviews = async (status = 'pending', page = 1) => {
 
 export const moderateReview = async (reviewId, action) => {
   return authFetch(`/api/admin/reviews/${reviewId}/moderate`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action }),
+  })
+}
+
+export const verifyAgent = async (agentId, action) => {
+  return authFetch(`/api/admin/agents/${agentId}/verify`, {
     method: 'PATCH',
     body: JSON.stringify({ action }),
   })

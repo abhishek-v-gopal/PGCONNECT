@@ -13,7 +13,7 @@ const registerSchema = z.object({
   password: z.string().min(6),
   first_name: z.string().min(1).max(80),
   last_name: z.string().min(1).max(80),
-  role: z.enum(['student', 'owner']).default('student'),
+  role: z.enum(['student', 'owner', 'agent']).default('student'),
   phone: z.string().optional(),
   university: z.string().optional(),
 })
@@ -34,6 +34,7 @@ authRouter.post('/register', zValidator('json', registerSchema), async (c) => {
   }
 
   const referral_code = role === 'student' ? generateReferralCode() : null
+  const agent_code = role === 'agent' ? generateReferralCode() : null
 
   const { error: profileError } = await supabase.from('profiles').insert({
     id: data.user.id,
@@ -43,6 +44,7 @@ authRouter.post('/register', zValidator('json', registerSchema), async (c) => {
     phone,
     university,
     referral_code,
+    agent_code,
   })
 
   if (profileError) {
@@ -52,8 +54,10 @@ authRouter.post('/register', zValidator('json', registerSchema), async (c) => {
 
   return c.json({
     success: true,
-    message: 'Registration successful. Please check your email to confirm your account.',
-    user: { id: data.user.id, email, first_name, last_name, role, referral_code },
+    message: role === 'agent'
+      ? 'Registration successful. Your agent account is pending admin approval before your code can be used.'
+      : 'Registration successful. Please check your email to confirm your account.',
+    user: { id: data.user.id, email, first_name, last_name, role, referral_code, agent_code },
     token: data.session?.access_token,
   }, 201)
 })

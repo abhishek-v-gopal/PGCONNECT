@@ -128,10 +128,8 @@ function SignInForm() {
                     placeholder="name@university.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all"
+                    className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all focus:border-[var(--pg-primary)] focus:bg-[var(--pg-bg)] focus:text-[var(--pg-text)]"
                     style={{ background: "var(--pg-bg)", borderColor: "var(--pg-border)", color: "var(--pg-text)" }}
-                    onFocus={e => { e.currentTarget.style.borderColor = "var(--pg-primary)"; e.currentTarget.style.background = "white"; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = "var(--pg-border)"; e.currentTarget.style.background = "var(--pg-bg)"; }}
                   />
                 </div>
 
@@ -146,10 +144,8 @@ function SignInForm() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all pr-11"
+                      className="w-full border rounded-xl px-4 py-3 text-sm placeholder-slate-400 outline-none transition-all pr-11 focus:border-[var(--pg-primary)] focus:bg-[var(--pg-bg)] focus:text-[var(--pg-text)]"
                       style={{ background: "var(--pg-bg)", borderColor: "var(--pg-border)", color: "var(--pg-text)" }}
-                      onFocus={e => { e.currentTarget.style.borderColor = "var(--pg-primary)"; e.currentTarget.style.background = "white"; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = "var(--pg-border)"; e.currentTarget.style.background = "var(--pg-bg)"; }}
                     />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? "Hide password" : "Show password"}

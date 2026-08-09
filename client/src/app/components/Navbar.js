@@ -161,15 +161,15 @@ export default function Navbar() {
                       </p>
                       {user.role === "student" ? (
                         <>
-                          <button onClick={goToPayments} className="w-full text-left px-3.5 py-2 text-sm text-[var(--pg-text)] hover:bg-blue-50 cursor-pointer transition-colors">
+                          <button onClick={goToPayments} className="w-full text-left px-3.5 py-2 text-sm text-[var(--pg-text)] hover:text-[var(--pg-primary)] hover:bg-blue-50 cursor-pointer transition-colors">
                             My Bookings & Payments
                           </button>
-                          <button onClick={goToDashboard} className="w-full text-left px-3.5 py-2 text-sm text-[var(--pg-text)] hover:bg-blue-50 cursor-pointer transition-colors">
+                          <button onClick={goToDashboard} className="w-full text-left px-3.5 py-2 text-sm text-[var(--pg-text)] hover:text-[var(--pg-primary)] hover:bg-blue-50 cursor-pointer transition-colors">
                             Referral Program
                           </button>
                         </>
                       ) : (
-                        <button onClick={goToDashboard} className="w-full text-left px-3.5 py-2 text-sm text-[var(--pg-text)] hover:bg-blue-50 cursor-pointer transition-colors">
+                        <button onClick={goToDashboard} className="w-full text-left px-3.5 py-2 text-sm text-[var(--pg-text)] hover:text-[var(--pg-primary)] hover:bg-blue-50 cursor-pointer transition-colors">
                           Dashboard
                         </button>
                       )}

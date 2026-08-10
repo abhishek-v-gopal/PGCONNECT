@@ -762,7 +762,7 @@ export default function OwnerDashboard() {
                               <p className="text-xs text-slate-500 dark:text-slate-400">{b.tenant?.phone || "-"}</p>
                             </td>
                             <td className="px-6 py-4">
-                              <p className="text-sm font-semibold text-slate-800">{b.properties?.name}</p>
+                              <p className="text-sm font-semibold text-slate-800 dark:text-slate-300">{b.properties?.name}</p>
                               <p className="text-xs text-slate-500 dark:text-slate-400">{b.room_type}</p>
                             </td>
                             <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{formatDate(b.move_in_date)}</td>
